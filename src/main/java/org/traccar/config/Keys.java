@@ -975,13 +975,6 @@ public final class Keys {
             List.of(KeyType.CONFIG));
 
     /**
-     * Enable database access console via '/console' URL. Use only for debugging. Never use in production.
-     */
-    public static final ConfigKey<Boolean> WEB_CONSOLE = new BooleanConfigKey(
-            "web.console",
-            List.of(KeyType.CONFIG));
-
-    /**
      * Include stack traces in API error responses. Disable to return only error messages.
      */
     public static final ConfigKey<Boolean> WEB_SHOW_STACK_TRACES = new BooleanConfigKey(
