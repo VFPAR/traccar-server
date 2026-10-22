@@ -4,10 +4,10 @@
 
     <!-- Documentation: https://www.traccar.org/configuration-file/ -->
 
-    <entry key='database.driver'>org.h2.Driver</entry>
-    <entry key='database.url'>jdbc:h2:./data/database</entry>
-    <entry key='database.user'>sa</entry>
-    <entry key='database.password' />
+    <entry key='database.driver'>org.postgresql.Driver</entry>
+    <entry key='database.url'>jdbc:postgresql://localhost:5432/traccar</entry>
+    <entry key='database.user'>postgres</entry>
+    <entry key='database.password'>postgres</entry>
 
     <entry key='micodus.port'>6013</entry>
     <entry key='jt808.port'>6014</entry>

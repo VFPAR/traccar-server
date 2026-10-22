@@ -4104,6 +4104,34 @@ components:
         category:
           type: [string, 'null']
           description: Free form category used for grouping devices in the UI
+        vehicleModel:
+          type: [string, 'null']
+          description: Model of the vehicle where the tracker is installed
+        plate:
+          type: [string, 'null']
+          description: Vehicle license plate
+        chassis:
+          type: [string, 'null']
+          description: Vehicle chassis number (VIN)
+        color:
+          type: [string, 'null']
+          description: Vehicle color
+        manufacturer:
+          type: [string, 'null']
+          description: Vehicle manufacturer
+        installationDate:
+          type: [string, 'null']
+          description: Tracker installation date in ISO 8601 format. eg. `1963-11-22T18:30:00Z`
+          format: date-time
+        vehicleType:
+          type: [string, 'null']
+          description: Vehicle body type, e.g. SUV, HATCH, SEDAN
+        manufactureYear:
+          type: [integer, 'null']
+          description: Vehicle manufacturing year
+        modelYear:
+          type: [integer, 'null']
+          description: Vehicle model year
         attributes:
           type: object
           description: Custom attributes for protocol or business specific data

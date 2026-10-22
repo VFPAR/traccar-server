@@ -1,4 +1,7 @@
 # Ambiente local: traccar-server + traccar-web separados, igual ao EasyPanel.
+# Banco: PostgreSQL rodando no host (localhost:5432, banco 'traccar'). O H2 foi descontinuado.
+# Dados antigos do H2: scripts/migrate-h2-to-postgres/migrate.sh
+# Valores sobrescritos por .env (veja .env.example); sem .env usa os padroes abaixo.
 # Uso:  docker compose -f docker-compose.local.yml up -d --build
 name: traccar-local
 
@@ -10,6 +13,12 @@ services:
       - "8082:8082"   # API/front embutido (acesso direto, opcional)
       - "6013:6013"   # micodus (MV730G)
       - "6014:6014"   # jt808 (MV710G/MV710N)
+    environment:
+      CONFIG_USE_ENVIRONMENT_VARIABLES: "true"
+      DATABASE_DRIVER: ${DATABASE_DRIVER:-org.postgresql.Driver}
+      DATABASE_URL: ${DATABASE_URL:-jdbc:postgresql://host.docker.internal:5432/traccar}
+      DATABASE_USER: ${DATABASE_USER:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-postgres}
     volumes:
       - traccar-data:/opt/traccar/data
     restart: unless-stopped

@@ -36,7 +36,7 @@ PG_PASSWORD="${PG_PASSWORD:-postgres}"
 PG_DB="${PG_DB:-traccar}"
 PSQL_IMAGE="${PSQL_IMAGE:-postgres:17-alpine}"
 
-COMPOSE=(docker compose -f docker-compose.local.yml -f docker-compose.postgres.yml)
+COMPOSE=(docker compose -f docker-compose.local.yml)
 
 psql_run() {
   docker run --rm -i ${NETARGS[@]+"${NETARGS[@]}"} -e PGPASSWORD="$PG_PASSWORD" -v "$WORK:/work" "$PSQL_IMAGE" \
