@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd"
+  logicalFilePath="changelog-6.17.0-tenant">
+
+  <changeSet author="author" id="changelog-6.17.0-tenant">
+
+    <createTable tableName="tc_tenants">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" />
+      </column>
+      <column name="name" type="VARCHAR(128)">
+        <constraints nullable="false" />
+      </column>
+      <column name="disabled" type="BOOLEAN" defaultValueBoolean="false" />
+      <column name="attributes" type="VARCHAR(4000)" />
+    </createTable>
+
+    <addColumn tableName="tc_users">
+      <column name="tenantid" type="BIGINT" />
+    </addColumn>
+    <addForeignKeyConstraint baseTableName="tc_users" baseColumnNames="tenantid" constraintName="fk_user_tenantid" referencedTableName="tc_tenants" referencedColumnNames="id" onDelete="RESTRICT" />
+    <createIndex tableName="tc_users" indexName="idx_users_tenantid">
+      <column name="tenantid" />
+    </createIndex>
+
+    <addColumn tableName="tc_devices">
+      <column name="tenantid" type="BIGINT" />
+    </addColumn>
+    <addForeignKeyConstraint baseTableName="tc_devices" baseColumnNames="tenantid" constraintName="fk_device_tenantid" referencedTableName="tc_tenants" referencedColumnNames="id" onDelete="RESTRICT" />
+    <createIndex tableName="tc_devices" indexName="idx_devices_tenantid">
+      <column name="tenantid" />
+    </createIndex>
+
+    <addColumn tableName="tc_groups">
+      <column name="tenantid" type="BIGINT" />
+    </addColumn>
+    <addForeignKeyConstraint baseTableName="tc_groups" baseColumnNames="tenantid" constraintName="fk_group_tenantid" referencedTableName="tc_tenants" referencedColumnNames="id" onDelete="RESTRICT" />
+    <createIndex tableName="tc_groups" indexName="idx_groups_tenantid">
+      <column name="tenantid" />
+    </createIndex>
+
+    <addColumn tableName="tc_geofences">
+      <column name="tenantid" type="BIGINT" />
+    </addColumn>
+    <addForeignKeyConstraint baseTableName="tc_geofences" baseColumnNames="tenantid" constraintName="fk_geofence_tenantid" referencedTableName="tc_tenants" referencedColumnNames="id" onDelete="RESTRICT" />
+    <createIndex tableName="tc_geofences" indexName="idx_geofences_tenantid">
+      <column name="tenantid" />
+    </createIndex>
+
+    <addColumn tableName="tc_drivers">
+      <column name="tenantid" type="BIGINT" />
+    </addColumn>
+    <addForeignKeyConstraint baseTableName="tc_drivers" baseColumnNames="tenantid" constraintName="fk_driver_tenantid" referencedTableName="tc_tenants" referencedColumnNames="id" onDelete="RESTRICT" />
+    <createIndex tableName="tc_drivers" indexName="idx_drivers_tenantid">
+      <column name="tenantid" />
+    </createIndex>
+
+    <addColumn tableName="tc_calendars">
+      <column name="tenantid" type="BIGINT" />
+    </addColumn>
+    <addForeignKeyConstraint baseTableName="tc_calendars" baseColumnNames="tenantid" constraintName="fk_calendar_tenantid" referencedTableName="tc_tenants" referencedColumnNames="id" onDelete="RESTRICT" />
+    <createIndex tableName="tc_calendars" indexName="idx_calendars_tenantid">
+      <column name="tenantid" />
+    </createIndex>
+
+    <addColumn tableName="tc_notifications">
+      <column name="tenantid" type="BIGINT" />
+    </addColumn>
+    <addForeignKeyConstraint baseTableName="tc_notifications" baseColumnNames="tenantid" constraintName="fk_notification_tenantid" referencedTableName="tc_tenants" referencedColumnNames="id" onDelete="RESTRICT" />
+    <createIndex tableName="tc_notifications" indexName="idx_notifications_tenantid">
+      <column name="tenantid" />
+    </createIndex>
+
+    <addColumn tableName="tc_commands">
+      <column name="tenantid" type="BIGINT" />
+    </addColumn>
+    <addForeignKeyConstraint baseTableName="tc_commands" baseColumnNames="tenantid" constraintName="fk_command_tenantid" referencedTableName="tc_tenants" referencedColumnNames="id" onDelete="RESTRICT" />
+    <createIndex tableName="tc_commands" indexName="idx_commands_tenantid">
+      <column name="tenantid" />
+    </createIndex>
+
+    <addColumn tableName="tc_attributes">
+      <column name="tenantid" type="BIGINT" />
+    </addColumn>
+    <addForeignKeyConstraint baseTableName="tc_attributes" baseColumnNames="tenantid" constraintName="fk_attribute_tenantid" referencedTableName="tc_tenants" referencedColumnNames="id" onDelete="RESTRICT" />
+    <createIndex tableName="tc_attributes" indexName="idx_attributes_tenantid">
+      <column name="tenantid" />
+    </createIndex>
+
+    <addColumn tableName="tc_maintenances">
+      <column name="tenantid" type="BIGINT" />
+    </addColumn>
+    <addForeignKeyConstraint baseTableName="tc_maintenances" baseColumnNames="tenantid" constraintName="fk_maintenance_tenantid" referencedTableName="tc_tenants" referencedColumnNames="id" onDelete="RESTRICT" />
+    <createIndex tableName="tc_maintenances" indexName="idx_maintenances_tenantid">
+      <column name="tenantid" />
+    </createIndex>
+
+    <addColumn tableName="tc_orders">
+      <column name="tenantid" type="BIGINT" />
+    </addColumn>
+    <addForeignKeyConstraint baseTableName="tc_orders" baseColumnNames="tenantid" constraintName="fk_order_tenantid" referencedTableName="tc_tenants" referencedColumnNames="id" onDelete="RESTRICT" />
+    <createIndex tableName="tc_orders" indexName="idx_orders_tenantid">
+      <column name="tenantid" />
+    </createIndex>
+
+    <addColumn tableName="tc_reports">
+      <column name="tenantid" type="BIGINT" />
+    </addColumn>
+    <addForeignKeyConstraint baseTableName="tc_reports" baseColumnNames="tenantid" constraintName="fk_report_tenantid" referencedTableName="tc_tenants" referencedColumnNames="id" onDelete="RESTRICT" />
+    <createIndex tableName="tc_reports" indexName="idx_reports_tenantid">
+      <column name="tenantid" />
+    </createIndex>
+
+  </changeSet>
+
+</databaseChangeLog>

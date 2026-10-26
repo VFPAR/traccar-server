@@ -118,7 +118,7 @@ public class TaskReports extends SingleScheduleTask {
 
         var users = storage.getObjects(User.class, new Request(
                 new Columns.All(),
-                new Condition.Permission(User.class, Report.class, report.getId())));
+                new Condition.Permission(User.class, Report.class, report.getId()).linkedOnly()));
 
         StringBuilder url = new StringBuilder("/reports/");
         url.append(report.getType()).append('?');

@@ -23,7 +23,27 @@ import java.util.Date;
 import java.util.regex.Pattern;
 
 @StorageName("tc_devices")
-public class Device extends GroupedModel implements Disableable, Schedulable {
+public class Device extends GroupedModel implements Disableable, Schedulable, TenantModel {
+
+    private long tenantId;
+
+    private boolean tenantIdSpecified;
+
+    @Override
+    public long getTenantId() {
+        return tenantId;
+    }
+
+    @Override
+    public void setTenantId(long tenantId) {
+        this.tenantId = tenantId;
+        this.tenantIdSpecified = true;
+    }
+
+    @Override
+    public boolean tenantIdSpecified() {
+        return tenantIdSpecified;
+    }
 
     private static final Pattern INVALID_UNIQUE_ID = Pattern.compile("[/\\\\]|\\A\\.{0,2}\\z");
 

@@ -22,10 +22,14 @@ import org.traccar.api.security.ServiceAccountUser;
 import org.traccar.model.ObjectOperation;
 import org.traccar.helper.LogAction;
 import org.traccar.model.BaseModel;
+import org.traccar.model.Device;
 import org.traccar.model.Group;
+import org.traccar.model.GroupedModel;
 import org.traccar.model.Permission;
+import org.traccar.model.TenantModel;
 import org.traccar.model.User;
 import org.traccar.session.ConnectionManager;
+import org.traccar.session.TenantAccessService;
 import org.traccar.session.cache.CacheManager;
 import org.traccar.storage.Storage;
 import org.traccar.storage.StorageException;
@@ -53,6 +57,9 @@ public abstract class BaseObjectResource<T extends BaseModel> extends BaseResour
     @Inject
     private LogAction actionLogger;
 
+    @Inject
+    protected TenantAccessService tenantAccessService;
+
     @Context
     private HttpServletRequest request;
 
@@ -77,6 +84,10 @@ public abstract class BaseObjectResource<T extends BaseModel> extends BaseResour
 
     @POST
     public Response add(T entity) throws Exception {
+        if (entity instanceof TenantModel tenantModel && permissionsService.notAdmin(getUserId())) {
+            tenantModel.setTenantId(permissionsService.getUser(getUserId()).getTenantId());
+        }
+        checkGroupTenant(entity);
         permissionsService.checkEdit(getUserId(), entity, true, false);
 
         entity.setId(storage.addObject(entity, new Request(new Columns.Exclude("id"))));
@@ -89,13 +100,58 @@ public abstract class BaseObjectResource<T extends BaseModel> extends BaseResour
             actionLogger.link(request, getUserId(), User.class, getUserId(), baseClass, entity.getId());
         }
 
+        if (entity instanceof TenantModel tenantModel) {
+            tenantAccessService.objectAdded(baseClass, entity.getId(), tenantModel.getTenantId());
+        }
+
         return Response.ok(entity).build();
+    }
+
+    private void checkGroupTenant(T entity) throws StorageException {
+        if (entity instanceof GroupedModel grouped && entity instanceof TenantModel tenantModel
+                && grouped.getGroupId() > 0) {
+            Group group = storage.getObject(Group.class, new Request(
+                    new Columns.Include("tenantId"), new Condition.Equals("id", grouped.getGroupId())));
+            if (group != null && group.getTenantId() != tenantModel.getTenantId()) {
+                throw new IllegalArgumentException("Group belongs to a different tenant");
+            }
+        }
+    }
+
+    private void checkGroupContentTenant(Group group) throws StorageException {
+        Group current = storage.getObject(Group.class, new Request(
+                new Columns.Include("tenantId"), new Condition.Equals("id", group.getId())));
+        if (current == null || current.getTenantId() == group.getTenantId()) {
+            return;
+        }
+        Condition byGroup = new Condition.Equals("groupId", group.getId());
+        Columns columns = new Columns.Include("id", "tenantId");
+        boolean mismatch = storage.getObjects(Device.class, new Request(columns, byGroup)).stream()
+                .anyMatch(device -> device.getTenantId() != group.getTenantId())
+                || storage.getObjects(Group.class, new Request(columns, byGroup)).stream()
+                .anyMatch(child -> child.getTenantId() != group.getTenantId());
+        if (mismatch) {
+            throw new IllegalArgumentException("Group has children or devices from a different tenant");
+        }
     }
 
     @Path("{id}")
     @PUT
     public Response update(T entity) throws Exception {
         permissionsService.checkPermission(baseClass, getUserId(), entity.getId());
+
+        Long previousTenantId = null;
+        if (entity instanceof TenantModel tenantModel) {
+            T current = storage.getObject(baseClass, new Request(
+                    new Columns.All(), new Condition.Equals("id", entity.getId())));
+            if (current instanceof TenantModel currentTenant) {
+                previousTenantId = currentTenant.getTenantId();
+                if (permissionsService.notAdmin(getUserId()) || !tenantModel.tenantIdSpecified()) {
+                    tenantModel.setTenantId(previousTenantId);
+                }
+            }
+        }
+        checkGroupTenant(entity);
 
         boolean skipReadonly = false;
         if (entity instanceof User after) {
@@ -115,6 +171,7 @@ public abstract class BaseObjectResource<T extends BaseModel> extends BaseResour
                         new Columns.Include("groupId"), new Condition.Equals("id", parentId)));
                 parentId = parent != null ? parent.getGroupId() : 0;
             }
+            checkGroupContentTenant(group);
         }
 
         permissionsService.checkEdit(getUserId(), entity, false, skipReadonly);
@@ -132,6 +189,12 @@ public abstract class BaseObjectResource<T extends BaseModel> extends BaseResour
         cacheManager.invalidateObject(true, entity.getClass(), entity.getId(), ObjectOperation.UPDATE);
         actionLogger.edit(request, getUserId(), entity);
 
+        if (previousTenantId != null && entity instanceof TenantModel tenantModel
+                && previousTenantId != tenantModel.getTenantId()) {
+            tenantAccessService.tenantChanged(
+                    request, getUserId(), baseClass, entity.getId(), previousTenantId, tenantModel.getTenantId());
+        }
+
         return Response.ok(entity).build();
     }
 
@@ -141,10 +204,21 @@ public abstract class BaseObjectResource<T extends BaseModel> extends BaseResour
         permissionsService.checkPermission(baseClass, getUserId(), id);
         permissionsService.checkEdit(getUserId(), baseClass, false, false);
 
+        long tenantId = 0;
+        if (Device.class.equals(baseClass) || User.class.equals(baseClass)) {
+            T current = storage.getObject(baseClass, new Request(
+                    new Columns.All(), new Condition.Equals("id", id)));
+            if (current instanceof TenantModel currentTenant) {
+                tenantId = currentTenant.getTenantId();
+            }
+        }
+
         storage.removeObject(baseClass, new Request(new Condition.Equals("id", id)));
         cacheManager.invalidateObject(true, baseClass, id, ObjectOperation.DELETE);
 
         actionLogger.remove(request, getUserId(), baseClass, id);
+
+        tenantAccessService.objectRemoved(baseClass, id, tenantId);
 
         return Response.noContent().build();
     }

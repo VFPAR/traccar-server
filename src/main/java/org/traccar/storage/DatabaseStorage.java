@@ -23,6 +23,7 @@ import org.traccar.model.Device;
 import org.traccar.model.Group;
 import org.traccar.model.GroupedModel;
 import org.traccar.model.Permission;
+import org.traccar.model.User;
 import org.traccar.storage.query.Columns;
 import org.traccar.storage.query.Condition;
 import org.traccar.storage.query.Order;
@@ -273,6 +274,10 @@ public class DatabaseStorage extends Storage {
                 if (condition.getIncludeGroups()) {
                     results.add(conditionId);
                 }
+                if (condition.getTenantScoped()) {
+                    int tenantParameters = (condition.getTenantDerived() ? 1 : 0) + (condition.getOwnerFixed() ? 2 : 1);
+                    results.addAll(Collections.nCopies(tenantParameters, conditionId));
+                }
             }
             case Condition.LatestPositions condition -> {
                 if (condition.getDeviceId() > 0) {
@@ -332,9 +337,13 @@ public class DatabaseStorage extends Storage {
 
             } else if (genericCondition instanceof Condition.Permission condition) {
 
-                result.append("id IN (");
-                result.append(formatPermissionQuery(condition));
-                result.append(")");
+                if (condition.getTenantScoped()) {
+                    result.append(formatTenantPermission(condition));
+                } else {
+                    result.append("id IN (");
+                    result.append(formatPermissionQuery(condition));
+                    result.append(")");
+                }
 
             } else if (genericCondition instanceof Condition.Contains condition) {
 
@@ -392,6 +401,29 @@ public class DatabaseStorage extends Storage {
                 }
             }
         }
+        return result.toString();
+    }
+
+    private String formatTenantPermission(Condition.Permission condition) throws StorageException {
+        StringBuilder result = new StringBuilder("((id IN (");
+        result.append(formatPermissionQuery(condition));
+        result.append(")");
+
+        String referenceTable = condition.getOwnerFixed()
+                ? getStorageName(User.class) : getStorageName(condition.getPropertyClass());
+        String tenantOf = "(SELECT tenantid FROM " + referenceTable + " WHERE id = ?)";
+        String tenantOrZero = "COALESCE(" + tenantOf + ", 0)";
+
+        if (condition.getTenantDerived()) {
+            result.append(" OR tenantid = ").append(tenantOf);
+        }
+        result.append(") AND ");
+        if (condition.getOwnerFixed()) {
+            result.append("(").append(tenantOrZero).append(" = 0 OR tenantid = ").append(tenantOrZero).append(")");
+        } else {
+            result.append("(COALESCE(tenantid, 0) = 0 OR tenantid = ").append(tenantOrZero).append(")");
+        }
+        result.append(")");
         return result.toString();
     }
 

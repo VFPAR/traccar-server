@@ -22,7 +22,27 @@ import org.traccar.storage.StorageName;
 
 @StorageName("tc_commands")
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Command extends BaseCommand {
+public class Command extends BaseCommand implements TenantModel {
+
+    private long tenantId;
+
+    private boolean tenantIdSpecified;
+
+    @Override
+    public long getTenantId() {
+        return tenantId;
+    }
+
+    @Override
+    public void setTenantId(long tenantId) {
+        this.tenantId = tenantId;
+        this.tenantIdSpecified = true;
+    }
+
+    @Override
+    public boolean tenantIdSpecified() {
+        return tenantIdSpecified;
+    }
 
     public static final String TYPE_CUSTOM = "custom";
     public static final String TYPE_IDENTIFICATION = "deviceIdentification";

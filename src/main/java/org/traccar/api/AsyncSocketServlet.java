@@ -27,6 +27,7 @@ import org.traccar.storage.Storage;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import org.traccar.storage.StorageException;
 
@@ -60,16 +61,26 @@ public class AsyncSocketServlet extends JettyWebSocketServlet {
         factory.setIdleTimeout(Duration.ofMillis(config.getLong(Keys.WEB_TIMEOUT)));
         factory.setCreator((req, resp) -> {
             Long userId = null;
-            List<String> tokens = req.getParameterMap().get("token");
-            if (tokens != null && !tokens.isEmpty()) {
-                String token = tokens.iterator().next();
-                try {
+            try {
+                List<String> tokens = req.getParameterMap().get("token");
+                if (tokens != null && !tokens.isEmpty()) {
+                    String token = tokens.iterator().next();
                     userId = loginService.login(token).getUser().getId();
-                } catch (StorageException | GeneralSecurityException | IOException e) {
-                    throw new RuntimeException(e);
+                } else if (SessionHelper.isSessionOriginValid(req.getHttpServletRequest())) {
+                    userId = (Long) ((HttpSession) req.getSession()).getAttribute(SessionHelper.USER_ID_KEY);
+                    if (userId != null) {
+                        loginService.checkUserEnabled(userId);
+                    }
                 }
-            } else if (SessionHelper.isSessionOriginValid(req.getHttpServletRequest())) {
-                userId = (Long) ((HttpSession) req.getSession()).getAttribute(SessionHelper.USER_ID_KEY);
+            } catch (SecurityException e) {
+                try {
+                    resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
+                } catch (IOException ioException) {
+                    throw new RuntimeException(ioException);
+                }
+                return null;
+            } catch (StorageException | GeneralSecurityException | IOException e) {
+                throw new RuntimeException(e);
             }
             if (userId != null) {
                 return new AsyncSocket(objectMapper, connectionManager, storage, userId);

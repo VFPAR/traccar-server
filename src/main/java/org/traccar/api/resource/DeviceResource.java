@@ -74,6 +74,30 @@ public class DeviceResource extends BaseObjectResource<Device> {
     @Inject
     private LogAction actionLogger;
 
+    private static void requireAttribute(Device entity, String key, String label) {
+        Object value = entity.getAttributes().get(key);
+        if (value == null || value.toString().isBlank()) {
+            throw new IllegalArgumentException(label + " is required");
+        }
+    }
+
+    private static void validateRequiredAttributes(Device entity) {
+        requireAttribute(entity, "devicePassword", "Device password");
+        requireAttribute(entity, "imeiSecundario", "IMEI");
+    }
+
+    @Override
+    public Response add(Device entity) throws Exception {
+        validateRequiredAttributes(entity);
+        return super.add(entity);
+    }
+
+    @Override
+    public Response update(Device entity) throws Exception {
+        validateRequiredAttributes(entity);
+        return super.update(entity);
+    }
+
     @Context
     private HttpServletRequest request;
 

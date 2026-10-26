@@ -25,6 +25,7 @@ import org.traccar.helper.DataConverter;
 import org.traccar.helper.SessionHelper;
 import org.traccar.helper.model.UserUtil;
 import org.traccar.model.Server;
+import org.traccar.model.Tenant;
 import org.traccar.model.User;
 import org.traccar.storage.Storage;
 import org.traccar.storage.StorageException;
@@ -175,10 +176,10 @@ public class LoginService {
             user.setId(storage.addObject(user, new Request(new Columns.Exclude("id"))));
 
         } else if (!Objects.equals(name, user.getName())
-                || administrator != null && user.getAdministrator() != administrator) {
+                || administrator != null && user.getTenantId() == 0 && user.getAdministrator() != administrator) {
 
             user.setName(name);
-            if (administrator != null) {
+            if (administrator != null && user.getTenantId() == 0) {
                 user.setAdministrator(administrator);
             }
             storage.updateObject(user, new Request(
@@ -189,11 +190,27 @@ public class LoginService {
         checkUserEnabled(user);
         return new LoginResult(user);
     }
-    private void checkUserEnabled(User user) throws SecurityException {
+
+    public void checkUserEnabled(long userId) throws SecurityException, StorageException {
+        if (userId == ServiceAccountUser.ID) {
+            return;
+        }
+        checkUserEnabled(storage.getObject(User.class, new Request(
+                new Columns.All(), new Condition.Equals("id", userId))));
+    }
+
+    private void checkUserEnabled(User user) throws SecurityException, StorageException {
         if (user == null) {
             throw new SecurityException("Unknown account");
         }
         user.checkDisabled();
+        if (user.getTenantId() > 0) {
+            Tenant tenant = storage.getObject(Tenant.class, new Request(
+                    new Columns.Include("disabled"), new Condition.Equals("id", user.getTenantId())));
+            if (tenant != null && tenant.getDisabled()) {
+                throw new SecurityException("User is disabled");
+            }
+        }
     }
 
     private void checkUserCode(User user, Integer code) throws SecurityException {

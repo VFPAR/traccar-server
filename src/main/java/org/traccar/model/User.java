@@ -26,7 +26,27 @@ import java.util.Date;
 import java.util.HashMap;
 
 @StorageName("tc_users")
-public class User extends ExtendedModel implements UserRestrictions, Disableable {
+public class User extends ExtendedModel implements UserRestrictions, Disableable, TenantModel {
+
+    private long tenantId;
+
+    private boolean tenantIdSpecified;
+
+    @Override
+    public long getTenantId() {
+        return tenantId;
+    }
+
+    @Override
+    public void setTenantId(long tenantId) {
+        this.tenantId = tenantId;
+        this.tenantIdSpecified = true;
+    }
+
+    @Override
+    public boolean tenantIdSpecified() {
+        return tenantIdSpecified;
+    }
 
     private String name;
 

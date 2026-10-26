@@ -24,6 +24,8 @@ import org.traccar.model.Pair;
 import org.traccar.model.Permission;
 import org.traccar.model.Position;
 import org.traccar.model.Server;
+import org.traccar.model.TenantModel;
+import org.traccar.model.User;
 import org.traccar.storage.query.Condition;
 import org.traccar.storage.query.Order;
 import org.traccar.storage.query.Request;
@@ -136,7 +138,34 @@ public class MemoryStorage extends Storage {
         };
     }
 
+    private long getTenantId(Class<?> clazz, long id) {
+        Object found = objects.computeIfAbsent(clazz, key -> new ConcurrentHashMap<>()).get(id);
+        return found instanceof TenantModel tenantModel ? tenantModel.getTenantId() : 0;
+    }
+
     private boolean checkPermission(Condition.Permission condition, Object object) {
+        if (!condition.getTenantScoped()) {
+            return checkLinkedPermission(condition, object);
+        }
+
+        boolean ownerFixed = condition.getOwnerFixed();
+        long fixedId = ownerFixed ? condition.getOwnerId() : condition.getPropertyId();
+        long fixedTenantId = ownerFixed
+                ? getTenantId(User.class, fixedId) : getTenantId(condition.getPropertyClass(), fixedId);
+        long objectTenantId = object instanceof TenantModel tenantModel ? tenantModel.getTenantId() : 0;
+
+        long scopeTenantId = ownerFixed ? fixedTenantId : objectTenantId;
+        long scopedObjectTenantId = ownerFixed ? objectTenantId : fixedTenantId;
+        if (scopeTenantId > 0 && scopedObjectTenantId != scopeTenantId) {
+            return false;
+        }
+        if (checkLinkedPermission(condition, object)) {
+            return true;
+        }
+        return condition.getTenantDerived() && fixedTenantId > 0 && objectTenantId == fixedTenantId;
+    }
+
+    private boolean checkLinkedPermission(Condition.Permission condition, Object object) {
         long objectId = (Long) retrieveValue(object, "id");
         Class<?> ownerClass = condition.getOwnerClass();
         Class<?> propertyClass = condition.getPropertyClass();

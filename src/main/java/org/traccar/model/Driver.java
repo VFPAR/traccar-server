@@ -19,7 +19,27 @@ package org.traccar.model;
 import org.traccar.storage.StorageName;
 
 @StorageName("tc_drivers")
-public class Driver extends ExtendedModel {
+public class Driver extends ExtendedModel implements TenantModel {
+
+    private long tenantId;
+
+    private boolean tenantIdSpecified;
+
+    @Override
+    public long getTenantId() {
+        return tenantId;
+    }
+
+    @Override
+    public void setTenantId(long tenantId) {
+        this.tenantId = tenantId;
+        this.tenantIdSpecified = true;
+    }
+
+    @Override
+    public boolean tenantIdSpecified() {
+        return tenantIdSpecified;
+    }
 
     private String name;
 

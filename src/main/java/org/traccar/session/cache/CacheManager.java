@@ -347,6 +347,10 @@ public class CacheManager implements BroadcastInterface {
                     }
                 }
 
+                if (object instanceof Device device && device.getTenantId() > 0) {
+                    linkTenantUsers(device);
+                }
+
                 for (Class<? extends BaseModel> clazz : GROUPED_CLASSES) {
                     if (!clazz.equals(Device.class) || object.getClass().equals(Device.class)) {
                         for (Permission permission : storage.getPermissions(object.getClass(), clazz)) {
@@ -365,6 +369,16 @@ public class CacheManager implements BroadcastInterface {
                 if (calendarId > 0) {
                     invalidatePermission(object.getClass(), object.getId(), Calendar.class, calendarId, true);
                 }
+            }
+        }
+    }
+
+    private void linkTenantUsers(Device device) throws Exception {
+        var users = storage.getObjects(User.class, new Request(
+                new Columns.All(), new Condition.Equals("tenantId", device.getTenantId())));
+        for (User user : users) {
+            if (!graph.addLink(Device.class, device.getId(), User.class, user.getId(), () -> user)) {
+                initializeCache(graph.getObject(User.class, user.getId()));
             }
         }
     }

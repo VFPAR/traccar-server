@@ -4136,6 +4136,59 @@ components:
           type: object
           description: Custom attributes for protocol or business specific data
           properties: {}
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique tenant identifier
+        name:
+          type: string
+          description: Tenant display name
+        disabled:
+          type: boolean
+          description: Disabled tenants block access of their users and devices
+        legalName:
+          type: [string, 'null']
+          description: Legal (company) name
+        document:
+          type: [string, 'null']
+          description: CNPJ, stored as 14 digits only; validated on write. Administrators only
+        email:
+          type: [string, 'null']
+        phone:
+          type: [string, 'null']
+        contactName:
+          type: [string, 'null']
+        zipCode:
+          type: [string, 'null']
+        street:
+          type: [string, 'null']
+        streetNumber:
+          type: [string, 'null']
+        complement:
+          type: [string, 'null']
+        district:
+          type: [string, 'null']
+        city:
+          type: [string, 'null']
+        state:
+          type: [string, 'null']
+        baseLatitude:
+          type: [number, 'null']
+          format: double
+          description: Base latitude, -90 to 90
+        baseLongitude:
+          type: [number, 'null']
+          format: double
+          description: Base longitude, -180 to 180
+        baseRadius:
+          type: [integer, 'null']
+          description: Base radius in meters
+        attributes:
+          type: object
+          properties: {}
     Group:
       type: object
       properties:
