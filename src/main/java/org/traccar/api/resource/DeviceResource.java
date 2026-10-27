@@ -18,6 +18,7 @@ package org.traccar.api.resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.core.Context;
 import org.traccar.api.BaseObjectResource;
+import org.traccar.database.CarBatteryManager;
 import org.traccar.database.MediaManager;
 import org.traccar.helper.LogAction;
 import org.traccar.model.Device;
@@ -70,6 +71,9 @@ public class DeviceResource extends BaseObjectResource<Device> {
 
     @Inject
     private MediaManager mediaManager;
+
+    @Inject
+    private CarBatteryManager carBatteryManager;
 
     @Inject
     private LogAction actionLogger;
@@ -134,7 +138,7 @@ public class DeviceResource extends BaseObjectResource<Device> {
                                 new Condition.Equals("id", deviceId),
                                 new Condition.Permission(User.class, getUserId(), Device.class)))));
             }
-            return result.stream();
+            return result.stream().peek(carBatteryManager::fill);
 
         } else {
 
@@ -165,7 +169,8 @@ public class DeviceResource extends BaseObjectResource<Device> {
             }
 
             return storage.getObjectsStream(baseClass, new Request(
-                    columns, Condition.merge(conditions), new Order("name", false, limit, offset)));
+                    columns, Condition.merge(conditions), new Order("name", false, limit, offset)))
+                    .peek(carBatteryManager::fill);
 
         }
     }

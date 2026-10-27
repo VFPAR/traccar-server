@@ -120,6 +120,28 @@ public class Device extends GroupedModel implements Disableable, Schedulable, Te
         this.positionId = positionId;
     }
 
+    private Double carBatteryVoltage;
+
+    @QueryIgnore
+    public Double getCarBatteryVoltage() {
+        return carBatteryVoltage;
+    }
+
+    public void setCarBatteryVoltage(Double carBatteryVoltage) {
+        this.carBatteryVoltage = carBatteryVoltage;
+    }
+
+    private Integer carBatteryPercent;
+
+    @QueryIgnore
+    public Integer getCarBatteryPercent() {
+        return carBatteryPercent;
+    }
+
+    public void setCarBatteryPercent(Integer carBatteryPercent) {
+        this.carBatteryPercent = carBatteryPercent;
+    }
+
     private String phone;
 
     public String getPhone() {

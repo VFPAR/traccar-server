@@ -4088,6 +4088,12 @@ components:
           type: [integer, 'null']
           format: int64
           description: Identifier of the last known position
+        carBatteryVoltage:
+          type: [number, 'null']
+          description: Vehicle battery voltage (V) from the last position with a power reading in the last 24 hours. Read-only
+        carBatteryPercent:
+          type: [integer, 'null']
+          description: Estimated vehicle battery charge (0-100) for a 12 V lead-acid battery. Only set when the voltage sample was taken with the ignition off. Read-only
         groupId:
           type: [integer, 'null']
           format: int64
