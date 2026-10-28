@@ -666,6 +666,39 @@ paths:
         '404':
           description: Not found
           content: {}
+    patch:
+      operationId: patchDevicesId
+      summary: Partially update a Device
+      description: >-
+        Only the fields present in the body are changed. `attributes` are merged key by key
+        (a `null` value removes the key). `id` in the body is ignored.
+      tags:
+        - Devices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Device'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          description: Bad request
+          content: {}
+        '401':
+          description: Unauthorized
+          content: {}
     put:
       operationId: putDevicesId
       summary: Update a Device

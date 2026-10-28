@@ -15,6 +15,9 @@
  */
 package org.traccar.api.resource;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.core.Context;
 import org.traccar.api.BaseObjectResource;
@@ -38,6 +41,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -73,6 +77,9 @@ public class DeviceResource extends BaseObjectResource<Device> {
     private MediaManager mediaManager;
 
     @Inject
+    private ObjectMapper objectMapper;
+
+    @Inject
     private CarBatteryManager carBatteryManager;
 
     @Inject
@@ -100,6 +107,40 @@ public class DeviceResource extends BaseObjectResource<Device> {
     public Response update(Device entity) throws Exception {
         validateRequiredAttributes(entity);
         return super.update(entity);
+    }
+
+    @Path("{id}")
+    @PATCH
+    public Response patch(@PathParam("id") long id, JsonNode changes) throws Exception {
+        permissionsService.checkPermission(Device.class, getUserId(), id);
+        if (changes == null || !changes.isObject()) {
+            throw new IllegalArgumentException("Request body must be a JSON object");
+        }
+
+        Device device = storage.getObject(Device.class, new Request(
+                new Columns.All(), new Condition.Equals("id", id)));
+        if (device == null) {
+            throw new IllegalArgumentException("Device not found");
+        }
+
+        ObjectNode fields = ((ObjectNode) changes).deepCopy();
+        fields.remove("id");
+        JsonNode attributes = fields.remove("attributes");
+        objectMapper.readerForUpdating(device).readValue(fields);
+
+        if (attributes != null && attributes.isObject()) {
+            attributes.fields().forEachRemaining(entry -> {
+                if (entry.getValue().isNull()) {
+                    device.getAttributes().remove(entry.getKey());
+                } else {
+                    device.getAttributes().put(
+                            entry.getKey(), objectMapper.convertValue(entry.getValue(), Object.class));
+                }
+            });
+        }
+
+        device.setId(id);
+        return update(device);
     }
 
     @Context
