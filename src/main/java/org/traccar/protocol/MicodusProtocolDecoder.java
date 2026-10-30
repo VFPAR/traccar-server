@@ -26,6 +26,11 @@ public class MicodusProtocolDecoder extends BaseProtocolDecoder {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter
             .ofPattern("yyyyMMddHHmmss").withZone(ZoneOffset.UTC);
 
+    // O pacote de texto (*HQ) manda speed/course sem confiança (0 mesmo em movimento) e não traz power.
+    private static final String KEY_PACKET_TYPE = "packetType";
+    private static final String PACKET_TYPE_TEXT = "text";
+    private static final String PACKET_TYPE_BINARY = "binary";
+
     public MicodusProtocolDecoder(Protocol protocol) {
         super(protocol);
     }
@@ -121,6 +126,8 @@ public class MicodusProtocolDecoder extends BaseProtocolDecoder {
         position.set("district", parser.nextInt());
         position.set(Position.KEY_BATTERY_LEVEL, decodeBattery(parser.nextInt()));
 
+        position.set(KEY_PACKET_TYPE, PACKET_TYPE_TEXT);
+
         return position;
     }
 
@@ -185,6 +192,8 @@ public class MicodusProtocolDecoder extends BaseProtocolDecoder {
         buf.skipBytes(4); // reserved
 
         position.set(Position.KEY_INDEX, buf.readUnsignedByte());
+
+        position.set(KEY_PACKET_TYPE, PACKET_TYPE_BINARY);
 
         return position;
     }
