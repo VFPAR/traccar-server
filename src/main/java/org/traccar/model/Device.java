@@ -431,13 +431,11 @@ public class Device extends GroupedModel implements Disableable, Schedulable, Te
     private Date createdAt;
 
     @QueryIgnore
-    @JsonIgnore
     @Override
     public Date getCreatedAt() {
         return createdAt;
     }
 
-    @JsonIgnore
     @Override
     public void setCreatedAt(Date createdAt) {
         this.createdAt = createdAt;
@@ -446,13 +444,11 @@ public class Device extends GroupedModel implements Disableable, Schedulable, Te
     private Date updatedAt;
 
     @QueryIgnore
-    @JsonIgnore
     @Override
     public Date getUpdatedAt() {
         return updatedAt;
     }
 
-    @JsonIgnore
     @Override
     public void setUpdatedAt(Date updatedAt) {
         this.updatedAt = updatedAt;
@@ -461,13 +457,11 @@ public class Device extends GroupedModel implements Disableable, Schedulable, Te
     private Date deletedAt;
 
     @QueryIgnore
-    @JsonIgnore
     @Override
     public Date getDeletedAt() {
         return deletedAt;
     }
 
-    @JsonIgnore
     @Override
     public void setDeletedAt(Date deletedAt) {
         this.deletedAt = deletedAt;
