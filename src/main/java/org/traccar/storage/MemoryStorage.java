@@ -24,14 +24,18 @@ import org.traccar.model.Pair;
 import org.traccar.model.Permission;
 import org.traccar.model.Position;
 import org.traccar.model.Server;
+import org.traccar.model.SoftDeletable;
 import org.traccar.model.TenantModel;
 import org.traccar.model.User;
+import org.traccar.storage.query.Columns;
 import org.traccar.storage.query.Condition;
 import org.traccar.storage.query.Order;
 import org.traccar.storage.query.Request;
 
 import java.lang.invoke.MethodHandle;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -65,6 +69,7 @@ public class MemoryStorage extends Storage {
     @Override
     public <T> Stream<T> getObjectsStream(Class<T> clazz, Request request) {
         var stream = objects.computeIfAbsent(clazz, key -> new ConcurrentHashMap<>()).values().stream()
+                .filter(object -> !isDeleted(object))
                 .filter(object -> checkCondition(request.getCondition(), object));
         Order order = request.getOrder();
         if (order != null) {
@@ -77,6 +82,21 @@ public class MemoryStorage extends Storage {
             }
         }
         return stream.map(object -> (T) object);
+    }
+
+    private boolean isDeleted(Object object) {
+        return object instanceof SoftDeletable softDeletable && softDeletable.getDeletedAt() != null;
+    }
+
+    private boolean isLive(Class<?> clazz, long id) {
+        for (Class<?> current = clazz; current != null && current.isAnnotationPresent(SoftDelete.class);
+                current = current.getSuperclass()) {
+            Object found = objects.computeIfAbsent(current, key -> new ConcurrentHashMap<>()).get(id);
+            if (found != null) {
+                return !isDeleted(found);
+            }
+        }
+        return true;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -132,7 +152,8 @@ public class MemoryStorage extends Storage {
                     yield false;
                 }
                 yield objects.computeIfAbsent(Device.class, key -> new ConcurrentHashMap<>()).values().stream()
-                        .anyMatch(device -> (Long) retrieveValue(device, "positionId") == positionId);
+                        .anyMatch(device -> !isDeleted(device)
+                                && (Long) retrieveValue(device, "positionId") == positionId);
             }
             default -> false;
         };
@@ -245,6 +266,12 @@ public class MemoryStorage extends Storage {
             }
         }
 
+        if (entity instanceof SoftDeletable softDeletable) {
+            Date now = new Date();
+            softDeletable.setCreatedAt(now);
+            softDeletable.setUpdatedAt(now);
+        }
+
         long id = increment.incrementAndGet();
         items.put(id, entity);
         return id;
@@ -254,11 +281,20 @@ public class MemoryStorage extends Storage {
     public <T> void updateObject(T entity, Request request) {
         Collection<Object> items = objects.computeIfAbsent(entity.getClass(), key -> new ConcurrentHashMap<>())
                 .values().stream()
+                .filter(object -> !isDeleted(object))
                 .filter(object -> checkCondition(request.getCondition(), object))
                 .toList();
         var getters = ReflectionCache.getProperties(entity.getClass(), "get");
         var setters = ReflectionCache.getProperties(entity.getClass(), "set");
-        for (String column : request.getColumns().getColumns(entity.getClass(), "get")) {
+        List<String> columns = request.getColumns().getColumns(entity.getClass(), "get");
+        if (request.getColumns() instanceof Columns.Exclude && entity instanceof SoftDeletable softDeletable) {
+            columns = new ArrayList<>(columns);
+            if (!columns.contains("updatedAt")) {
+                columns.add("updatedAt");
+            }
+            softDeletable.setUpdatedAt(new Date());
+        }
+        for (String column : columns) {
             MethodHandle setter = setters.get(column).handle();
             MethodHandle getter = getters.get(column).handle();
             try {
@@ -274,8 +310,19 @@ public class MemoryStorage extends Storage {
 
     @Override
     public void removeObject(Class<?> clazz, Request request) {
-        objects.computeIfAbsent(clazz, key -> new ConcurrentHashMap<>())
-                .values().removeIf(object -> checkCondition(request.getCondition(), object));
+        var items = objects.computeIfAbsent(clazz, key -> new ConcurrentHashMap<>()).values();
+        if (clazz.isAnnotationPresent(SoftDelete.class)) {
+            Date now = new Date();
+            for (Object object : items) {
+                if (!isDeleted(object) && checkCondition(request.getCondition(), object)) {
+                    SoftDeletable softDeletable = (SoftDeletable) object;
+                    softDeletable.setDeletedAt(now);
+                    softDeletable.setUpdatedAt(now);
+                }
+            }
+        } else {
+            items.removeIf(object -> checkCondition(request.getCondition(), object));
+        }
     }
 
     private Set<Pair<Long, Long>> getPermissionsSet(Class<?> ownerClass, Class<?> propertyClass) {
@@ -289,6 +336,7 @@ public class MemoryStorage extends Storage {
         return getPermissionsSet(ownerClass, propertyClass).stream()
                 .filter(pair -> ownerId == 0 || pair.first().equals(ownerId))
                 .filter(pair -> propertyId == 0 || pair.second().equals(propertyId))
+                .filter(pair -> isLive(ownerClass, pair.first()) && isLive(propertyClass, pair.second()))
                 .map(pair -> new Permission(ownerClass, pair.first(), propertyClass, pair.second()))
                 .toList();
     }

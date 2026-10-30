@@ -17,13 +17,15 @@ package org.traccar.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.traccar.storage.QueryIgnore;
+import org.traccar.storage.SoftDelete;
 import org.traccar.storage.StorageName;
 
 import java.util.Date;
 import java.util.regex.Pattern;
 
 @StorageName("tc_devices")
-public class Device extends GroupedModel implements Disableable, Schedulable, TenantModel {
+@SoftDelete
+public class Device extends GroupedModel implements Disableable, Schedulable, TenantModel, SoftDeletable {
 
     private long tenantId;
 
@@ -424,6 +426,51 @@ public class Device extends GroupedModel implements Disableable, Schedulable, Te
     @JsonIgnore
     public void setOverspeedGeofenceId(long overspeedGeofenceId) {
         this.overspeedGeofenceId = overspeedGeofenceId;
+    }
+
+    private Date createdAt;
+
+    @QueryIgnore
+    @JsonIgnore
+    @Override
+    public Date getCreatedAt() {
+        return createdAt;
+    }
+
+    @JsonIgnore
+    @Override
+    public void setCreatedAt(Date createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    private Date updatedAt;
+
+    @QueryIgnore
+    @JsonIgnore
+    @Override
+    public Date getUpdatedAt() {
+        return updatedAt;
+    }
+
+    @JsonIgnore
+    @Override
+    public void setUpdatedAt(Date updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    private Date deletedAt;
+
+    @QueryIgnore
+    @JsonIgnore
+    @Override
+    public Date getDeletedAt() {
+        return deletedAt;
+    }
+
+    @JsonIgnore
+    @Override
+    public void setDeletedAt(Date deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
 }

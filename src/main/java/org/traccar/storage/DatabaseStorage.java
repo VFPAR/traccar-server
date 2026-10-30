@@ -23,6 +23,7 @@ import org.traccar.model.Device;
 import org.traccar.model.Group;
 import org.traccar.model.GroupedModel;
 import org.traccar.model.Permission;
+import org.traccar.model.SoftDeletable;
 import org.traccar.model.User;
 import org.traccar.storage.query.Columns;
 import org.traccar.storage.query.Condition;
@@ -43,6 +44,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class DatabaseStorage extends Storage {
+
+    private static final String NOT_DELETED = "deletedat IS NULL";
 
     private final Config config;
     private final DataSource dataSource;
@@ -78,7 +81,7 @@ public class DatabaseStorage extends Storage {
             query.append(formatColumns(request.getColumns().getColumns(clazz, "set"), c -> c));
         }
         query.append(" FROM ").append(getStorageName(clazz));
-        query.append(formatCondition(request.getCondition()));
+        query.append(formatCondition(clazz, request.getCondition()));
         query.append(formatOrder(request.getOrder()));
         QueryBuilder builder = null;
         try {
@@ -105,7 +108,8 @@ public class DatabaseStorage extends Storage {
 
     @Override
     public <T> long addObject(T entity, Request request) throws StorageException {
-        List<String> columns = request.getColumns().getColumns(entity.getClass(), "get");
+        List<String> columns = withInsertTimestamps(entity.getClass(), request.getColumns());
+        touchInsert(entity, new Date());
         try (QueryBuilder builder = QueryBuilder.create(
                 config, dataSource, objectMapper, formatInsert(entity.getClass(), columns), true)) {
             builder.setObject(entity, columns);
@@ -118,10 +122,12 @@ public class DatabaseStorage extends Storage {
     @Override
     public <T> List<Long> addObjects(List<T> entities, Request request) throws StorageException {
         Class<?> entityClass = entities.getFirst().getClass();
-        List<String> columns = request.getColumns().getColumns(entityClass, "get");
+        List<String> columns = withInsertTimestamps(entityClass, request.getColumns());
+        Date now = new Date();
         try (QueryBuilder builder = QueryBuilder.create(
                 config, dataSource, objectMapper, formatInsert(entityClass, columns), true)) {
             for (T entity : entities) {
+                touchInsert(entity, now);
                 builder.setObject(entity, columns);
                 builder.addBatch();
             }
@@ -133,6 +139,31 @@ public class DatabaseStorage extends Storage {
             return ids;
         } catch (SQLException e) {
             throw new StorageException(e);
+        }
+    }
+
+    private boolean isSoftDelete(Class<?> clazz) {
+        return clazz.isAnnotationPresent(SoftDelete.class);
+    }
+
+    private List<String> withInsertTimestamps(Class<?> clazz, Columns columns) {
+        List<String> result = columns.getColumns(clazz, "get");
+        if (!isSoftDelete(clazz)) {
+            return result;
+        }
+        result = new ArrayList<>(result);
+        for (String column : List.of("createdAt", "updatedAt")) {
+            if (!result.contains(column)) {
+                result.add(column);
+            }
+        }
+        return result;
+    }
+
+    private void touchInsert(Object entity, Date now) {
+        if (entity instanceof SoftDeletable softDeletable) {
+            softDeletable.setCreatedAt(now);
+            softDeletable.setUpdatedAt(now);
         }
     }
 
@@ -150,11 +181,20 @@ public class DatabaseStorage extends Storage {
     @Override
     public <T> void updateObject(T entity, Request request) throws StorageException {
         List<String> columns = request.getColumns().getColumns(entity.getClass(), "get");
+        if (isSoftDelete(entity.getClass()) && request.getColumns() instanceof Columns.Exclude
+                && entity instanceof SoftDeletable softDeletable) {
+            // only full registration edits (Columns.Exclude) touch updatedAt, never partial telemetry updates
+            columns = new ArrayList<>(columns);
+            if (!columns.contains("updatedAt")) {
+                columns.add("updatedAt");
+            }
+            softDeletable.setUpdatedAt(new Date());
+        }
         StringBuilder query = new StringBuilder("UPDATE ");
         query.append(getStorageName(entity.getClass()));
         query.append(" SET ");
         query.append(formatColumns(columns, c -> c + " = ?"));
-        query.append(formatCondition(request.getCondition()));
+        query.append(formatCondition(entity.getClass(), request.getCondition()));
         try (QueryBuilder builder = QueryBuilder.create(config, dataSource, objectMapper, query.toString())) {
             builder.setObject(entity, columns);
             List<Object> values = getConditionVariables(request.getCondition());
@@ -169,9 +209,14 @@ public class DatabaseStorage extends Storage {
 
     @Override
     public void removeObject(Class<?> clazz, Request request) throws StorageException {
-        StringBuilder query = new StringBuilder("DELETE FROM ");
-        query.append(getStorageName(clazz));
-        query.append(formatCondition(request.getCondition()));
+        StringBuilder query = new StringBuilder();
+        if (isSoftDelete(clazz)) {
+            query.append("UPDATE ").append(getStorageName(clazz));
+            query.append(" SET deletedat = CURRENT_TIMESTAMP, updatedat = CURRENT_TIMESTAMP");
+        } else {
+            query.append("DELETE FROM ").append(getStorageName(clazz));
+        }
+        query.append(formatCondition(clazz, request.getCondition()));
         try (QueryBuilder builder = QueryBuilder.create(config, dataSource, objectMapper, query.toString())) {
             List<Object> values = getConditionVariables(request.getCondition());
             for (int index = 0; index < values.size(); index++) {
@@ -197,7 +242,20 @@ public class DatabaseStorage extends Storage {
             conditions.add(new Condition.Equals(Permission.getKey(propertyClass), propertyId));
         }
         Condition combinedCondition = Condition.merge(conditions);
-        query.append(formatCondition(combinedCondition));
+        var filters = new ArrayList<String>();
+        String conditionSql = formatCondition(combinedCondition, false);
+        if (!conditionSql.isEmpty()) {
+            filters.add(conditionSql);
+        }
+        for (Class<? extends BaseModel> linkedClass : List.of(ownerClass, propertyClass)) {
+            if (isSoftDelete(linkedClass)) {
+                filters.add(Permission.getKey(linkedClass) + " IN (SELECT id FROM "
+                        + getStorageName(linkedClass) + " WHERE " + NOT_DELETED + ")");
+            }
+        }
+        if (!filters.isEmpty()) {
+            query.append(" WHERE ").append(String.join(" AND ", filters));
+        }
         try (QueryBuilder builder = QueryBuilder.create(config, dataSource, objectMapper, query.toString())) {
             List<Object> values = getConditionVariables(combinedCondition);
             for (int index = 0; index < values.size(); index++) {
@@ -241,6 +299,14 @@ public class DatabaseStorage extends Storage {
         } catch (SQLException e) {
             throw new StorageException(e);
         }
+    }
+
+    private String formatCondition(Class<?> clazz, Condition condition) throws StorageException {
+        String result = formatCondition(condition, false);
+        if (isSoftDelete(clazz)) {
+            result = result.isEmpty() ? NOT_DELETED : "(" + result + ") AND " + NOT_DELETED;
+        }
+        return result.isEmpty() ? "" : " WHERE " + result;
     }
 
     private String getStorageName(Class<?> clazz) throws StorageException {
@@ -297,10 +363,6 @@ public class DatabaseStorage extends Storage {
 
     private String formatColumns(List<String> columns, Function<String, String> mapper) {
         return columns.stream().map(mapper).collect(Collectors.joining(", "));
-    }
-
-    private String formatCondition(Condition genericCondition) throws StorageException {
-        return formatCondition(genericCondition, true);
     }
 
     private String formatCondition(Condition genericCondition, boolean appendWhere) throws StorageException {
@@ -366,8 +428,9 @@ public class DatabaseStorage extends Storage {
                 result.append("id IN (");
                 result.append("SELECT positionId FROM ");
                 result.append(getStorageName(Device.class));
+                result.append(" WHERE ").append(NOT_DELETED);
                 if (condition.getDeviceId() > 0) {
-                    result.append(" WHERE id = ?");
+                    result.append(" AND id = ?");
                 }
                 result.append(")");
 
@@ -498,7 +561,7 @@ public class DatabaseStorage extends Storage {
                 result.append(" INNER JOIN (");
                 result.append("SELECT groupId as parentId, id as deviceId FROM ");
                 result.append(getStorageName(Device.class));
-                result.append(" WHERE groupId IS NOT NULL");
+                result.append(" WHERE groupId IS NOT NULL AND ").append(NOT_DELETED);
                 result.append(") AS devices ON all_groups.groupId = devices.parentId");
             }
 

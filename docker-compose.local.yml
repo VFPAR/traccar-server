@@ -19,6 +19,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:-jdbc:postgresql://host.docker.internal:5432/traccar}
       DATABASE_USER: ${DATABASE_USER:-postgres}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      MEDIA_PATH: /opt/traccar/data/media   # fotos dos dispositivos dentro do volume persistente
     volumes:
       - traccar-data:/opt/traccar/data
     restart: unless-stopped

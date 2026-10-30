@@ -257,6 +257,16 @@ public class DeviceResource extends BaseObjectResource<Device> {
         return Response.noContent().build();
     }
 
+    private String imageName(String slot) {
+        if (slot == null || slot.isEmpty()) {
+            return "device";
+        }
+        return switch (slot) {
+            case "tracker", "plate", "odometer" -> slot;
+            default -> throw new IllegalArgumentException("Unsupported image slot");
+        };
+    }
+
     private String imageExtension(String type) {
         return switch (type) {
             case "image/jpeg" -> "jpg";
@@ -271,7 +281,7 @@ public class DeviceResource extends BaseObjectResource<Device> {
     @POST
     @Consumes("image/*")
     public Response uploadImage(
-            @PathParam("id") long deviceId, File file,
+            @PathParam("id") long deviceId, @QueryParam("slot") String slot, File file,
             @HeaderParam(HttpHeaders.CONTENT_TYPE) String type) throws StorageException, IOException {
 
         permissionsService.checkEdit(getUserId(), Device.class, false, false);
@@ -282,7 +292,7 @@ public class DeviceResource extends BaseObjectResource<Device> {
                         new Condition.Equals("id", deviceId),
                         new Condition.Permission(User.class, getUserId(), Device.class))));
         if (device != null) {
-            String name = "device";
+            String name = imageName(slot);
             String extension = imageExtension(type);
             try (var input = new FileInputStream(file);
                     var output = mediaManager.createFileStream(device.getUniqueId(), name, extension)) {

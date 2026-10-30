@@ -20,10 +20,12 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.traccar.storage.QueryIgnore;
+import org.traccar.storage.SoftDelete;
 import org.traccar.storage.StorageName;
 
 @StorageName("tc_positions")
-public class Position extends Message {
+@SoftDelete
+public class Position extends Message implements SoftDeletable {
 
     public static final String KEY_ORIGINAL = "raw";
     public static final String KEY_INDEX = "index";
@@ -350,6 +352,51 @@ public class Position extends Message {
     @Override
     public void setType(String type) {
         super.setType(type);
+    }
+
+    private Date createdAt;
+
+    @QueryIgnore
+    @JsonIgnore
+    @Override
+    public Date getCreatedAt() {
+        return createdAt;
+    }
+
+    @JsonIgnore
+    @Override
+    public void setCreatedAt(Date createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    private Date updatedAt;
+
+    @QueryIgnore
+    @JsonIgnore
+    @Override
+    public Date getUpdatedAt() {
+        return updatedAt;
+    }
+
+    @JsonIgnore
+    @Override
+    public void setUpdatedAt(Date updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    private Date deletedAt;
+
+    @QueryIgnore
+    @JsonIgnore
+    @Override
+    public Date getDeletedAt() {
+        return deletedAt;
+    }
+
+    @JsonIgnore
+    @Override
+    public void setDeletedAt(Date deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
 }
