@@ -22,6 +22,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.core.Context;
 import org.traccar.api.BaseObjectResource;
 import org.traccar.database.CarBatteryManager;
+import org.traccar.database.DeviceImageStorage;
 import org.traccar.database.MediaManager;
 import org.traccar.helper.LogAction;
 import org.traccar.model.Device;
@@ -75,6 +76,9 @@ public class DeviceResource extends BaseObjectResource<Device> {
 
     @Inject
     private MediaManager mediaManager;
+
+    @Inject
+    private DeviceImageStorage deviceImageStorage;
 
     @Inject
     private ObjectMapper objectMapper;
@@ -294,6 +298,13 @@ public class DeviceResource extends BaseObjectResource<Device> {
         if (device != null) {
             String name = imageName(slot);
             String extension = imageExtension(type);
+            if (deviceImageStorage.isEnabled()) {
+                if (file.length() > IMAGE_SIZE_LIMIT) {
+                    throw new IllegalArgumentException("Image size limit exceeded");
+                }
+                deviceImageStorage.put(device.getUniqueId(), name + "." + extension, type, file);
+                return Response.ok(name + "." + extension).build();
+            }
             try (var input = new FileInputStream(file);
                     var output = mediaManager.createFileStream(device.getUniqueId(), name, extension)) {
 

@@ -21,6 +21,7 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import org.traccar.api.security.LoginResult;
 import org.traccar.api.security.LoginService;
 import org.traccar.api.security.PermissionsService;
+import org.traccar.database.DeviceImageStorage;
 import org.traccar.database.StatisticsManager;
 import org.traccar.model.Device;
 import org.traccar.storage.Storage;
@@ -46,16 +47,40 @@ public class MediaFilter implements Filter {
     private final Storage storage;
     private final StatisticsManager statisticsManager;
     private final LoginService loginService;
+    private final DeviceImageStorage deviceImageStorage;
     private final Provider<PermissionsService> permissionsServiceProvider;
 
     @Inject
     public MediaFilter(
             Storage storage, StatisticsManager statisticsManager, LoginService loginService,
+            DeviceImageStorage deviceImageStorage,
             Provider<PermissionsService> permissionsServiceProvider) {
         this.storage = storage;
         this.statisticsManager = statisticsManager;
         this.loginService = loginService;
+        this.deviceImageStorage = deviceImageStorage;
         this.permissionsServiceProvider = permissionsServiceProvider;
+    }
+
+    /**
+     * Streams a device photo from S3. Returns false when the photo is not there, so the request falls back to the
+     * media folder (photos uploaded before S3 was enabled).
+     */
+    private boolean serveFromStorage(String uniqueId, String name, HttpServletResponse response)
+            throws IOException {
+        try (var object = deviceImageStorage.get(uniqueId, name)) {
+            if (object == null) {
+                return false;
+            }
+            var metadata = object.response();
+            response.setContentType(metadata.contentType());
+            if (metadata.contentLength() != null) {
+                response.setContentLengthLong(metadata.contentLength());
+            }
+            response.setHeader(HttpHeaderNames.CACHE_CONTROL.toString(), "private, max-age=300");
+            object.transferTo(response.getOutputStream());
+            return true;
+        }
     }
 
     @Override
@@ -81,6 +106,11 @@ public class MediaFilter implements Filter {
                         new Columns.All(), new Condition.Equals("uniqueId", parts[1])));
                 if (device != null) {
                     permissionsService.checkPermission(Device.class, userId, device.getId());
+                    if (deviceImageStorage.isEnabled() && parts.length == 3
+                            && DeviceImageStorage.isImageName(parts[2])
+                            && serveFromStorage(device.getUniqueId(), parts[2], httpResponse)) {
+                        return;
+                    }
                     chain.doFilter(request, response);
                     return;
                 }

@@ -135,6 +135,7 @@ dependencies {
     implementation "com.github.jnr:jnr-posix:3.2.2"
     implementation "com.google.protobuf:protobuf-java:$protobufVersion"
     implementation "software.amazon.awssdk:sns:2.54.2"
+    implementation "software.amazon.awssdk:s3:2.54.2"
     implementation "org.apache.kafka:kafka-clients:4.3.1"
     implementation "com.hivemq:hivemq-mqtt-client:1.4.0"
     implementation "redis.clients:jedis:8.0.0"

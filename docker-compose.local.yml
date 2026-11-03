@@ -20,6 +20,11 @@ services:
       DATABASE_USER: ${DATABASE_USER:-postgres}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-postgres}
       MEDIA_PATH: /opt/traccar/data/media   # fotos dos dispositivos dentro do volume persistente
+      # S3 opcional para as fotos de device (vazio = disco). Credenciais pela chain padrao da AWS.
+      MEDIA_S3_BUCKET: ${MEDIA_S3_BUCKET:-}
+      MEDIA_S3_REGION: ${MEDIA_S3_REGION:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
     volumes:
       - traccar-data:/opt/traccar/data
     restart: unless-stopped
