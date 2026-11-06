@@ -17,13 +17,35 @@ package org.traccar.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.traccar.storage.QueryIgnore;
+import org.traccar.storage.SoftDelete;
 import org.traccar.storage.StorageName;
 
 import java.util.Date;
 import java.util.regex.Pattern;
 
 @StorageName("tc_devices")
-public class Device extends GroupedModel implements Disableable, Schedulable {
+@SoftDelete
+public class Device extends GroupedModel implements Disableable, Schedulable, TenantModel, SoftDeletable {
+
+    private long tenantId;
+
+    private boolean tenantIdSpecified;
+
+    @Override
+    public long getTenantId() {
+        return tenantId;
+    }
+
+    @Override
+    public void setTenantId(long tenantId) {
+        this.tenantId = tenantId;
+        this.tenantIdSpecified = true;
+    }
+
+    @Override
+    public boolean tenantIdSpecified() {
+        return tenantIdSpecified;
+    }
 
     private static final Pattern INVALID_UNIQUE_ID = Pattern.compile("[/\\\\]|\\A\\.{0,2}\\z");
 
@@ -100,6 +122,28 @@ public class Device extends GroupedModel implements Disableable, Schedulable {
         this.positionId = positionId;
     }
 
+    private Double carBatteryVoltage;
+
+    @QueryIgnore
+    public Double getCarBatteryVoltage() {
+        return carBatteryVoltage;
+    }
+
+    public void setCarBatteryVoltage(Double carBatteryVoltage) {
+        this.carBatteryVoltage = carBatteryVoltage;
+    }
+
+    private Integer carBatteryPercent;
+
+    @QueryIgnore
+    public Integer getCarBatteryPercent() {
+        return carBatteryPercent;
+    }
+
+    public void setCarBatteryPercent(Integer carBatteryPercent) {
+        this.carBatteryPercent = carBatteryPercent;
+    }
+
     private String phone;
 
     public String getPhone() {
@@ -138,6 +182,96 @@ public class Device extends GroupedModel implements Disableable, Schedulable {
 
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    private String vehicleModel;
+
+    public String getVehicleModel() {
+        return vehicleModel;
+    }
+
+    public void setVehicleModel(String vehicleModel) {
+        this.vehicleModel = vehicleModel;
+    }
+
+    private String plate;
+
+    public String getPlate() {
+        return plate;
+    }
+
+    public void setPlate(String plate) {
+        this.plate = plate != null ? plate.trim() : null;
+    }
+
+    private String chassis;
+
+    public String getChassis() {
+        return chassis;
+    }
+
+    public void setChassis(String chassis) {
+        this.chassis = chassis != null ? chassis.trim() : null;
+    }
+
+    private String color;
+
+    public String getColor() {
+        return color;
+    }
+
+    public void setColor(String color) {
+        this.color = color;
+    }
+
+    private String manufacturer;
+
+    public String getManufacturer() {
+        return manufacturer;
+    }
+
+    public void setManufacturer(String manufacturer) {
+        this.manufacturer = manufacturer;
+    }
+
+    private Date installationDate;
+
+    public Date getInstallationDate() {
+        return installationDate;
+    }
+
+    public void setInstallationDate(Date installationDate) {
+        this.installationDate = installationDate;
+    }
+
+    private String vehicleType;
+
+    public String getVehicleType() {
+        return vehicleType;
+    }
+
+    public void setVehicleType(String vehicleType) {
+        this.vehicleType = vehicleType;
+    }
+
+    private Integer manufactureYear;
+
+    public Integer getManufactureYear() {
+        return manufactureYear;
+    }
+
+    public void setManufactureYear(Integer manufactureYear) {
+        this.manufactureYear = manufactureYear;
+    }
+
+    private Integer modelYear;
+
+    public Integer getModelYear() {
+        return modelYear;
+    }
+
+    public void setModelYear(Integer modelYear) {
+        this.modelYear = modelYear;
     }
 
     private boolean disabled;
@@ -292,6 +426,45 @@ public class Device extends GroupedModel implements Disableable, Schedulable {
     @JsonIgnore
     public void setOverspeedGeofenceId(long overspeedGeofenceId) {
         this.overspeedGeofenceId = overspeedGeofenceId;
+    }
+
+    private Date createdAt;
+
+    @QueryIgnore
+    @Override
+    public Date getCreatedAt() {
+        return createdAt;
+    }
+
+    @Override
+    public void setCreatedAt(Date createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    private Date updatedAt;
+
+    @QueryIgnore
+    @Override
+    public Date getUpdatedAt() {
+        return updatedAt;
+    }
+
+    @Override
+    public void setUpdatedAt(Date updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    private Date deletedAt;
+
+    @QueryIgnore
+    @Override
+    public Date getDeletedAt() {
+        return deletedAt;
+    }
+
+    @Override
+    public void setDeletedAt(Date deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
 }

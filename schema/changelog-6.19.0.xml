@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd"
+  logicalFilePath="changelog-6.19.0">
+
+  <changeSet author="author" id="changelog-6.19.0-devices-geofences-timestamps" dbms="postgresql">
+
+    <addColumn tableName="tc_devices">
+      <column name="createdat" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+        <constraints nullable="false" />
+      </column>
+      <column name="updatedat" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+        <constraints nullable="false" />
+      </column>
+      <column name="deletedat" type="TIMESTAMP WITH TIME ZONE" />
+    </addColumn>
+
+    <addColumn tableName="tc_geofences">
+      <column name="createdat" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+        <constraints nullable="false" />
+      </column>
+      <column name="updatedat" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+        <constraints nullable="false" />
+      </column>
+      <column name="deletedat" type="TIMESTAMP WITH TIME ZONE" />
+    </addColumn>
+
+    <rollback>
+      <dropColumn tableName="tc_geofences" columnName="deletedat" />
+      <dropColumn tableName="tc_geofences" columnName="updatedat" />
+      <dropColumn tableName="tc_geofences" columnName="createdat" />
+      <dropColumn tableName="tc_devices" columnName="deletedat" />
+      <dropColumn tableName="tc_devices" columnName="updatedat" />
+      <dropColumn tableName="tc_devices" columnName="createdat" />
+    </rollback>
+
+  </changeSet>
+
+  <changeSet author="author" id="changelog-6.19.0-positions-timestamps" dbms="postgresql">
+
+    <addColumn tableName="tc_positions">
+      <column name="createdat" type="TIMESTAMP WITH TIME ZONE" />
+      <column name="updatedat" type="TIMESTAMP WITH TIME ZONE" />
+      <column name="deletedat" type="TIMESTAMP WITH TIME ZONE" />
+    </addColumn>
+
+    <!-- Default applies only to new rows; existing rows are backfilled by the script in scripts/ -->
+    <sql>
+      ALTER TABLE tc_positions ALTER COLUMN createdat SET DEFAULT now();
+      ALTER TABLE tc_positions ALTER COLUMN updatedat SET DEFAULT now();
+    </sql>
+
+    <rollback>
+      <dropColumn tableName="tc_positions" columnName="deletedat" />
+      <dropColumn tableName="tc_positions" columnName="updatedat" />
+      <dropColumn tableName="tc_positions" columnName="createdat" />
+    </rollback>
+
+  </changeSet>
+
+  <changeSet author="author" id="changelog-6.19.0-devices-uniqueid-partial" dbms="postgresql">
+
+    <sql splitStatements="false">
+      DO $$
+      DECLARE
+        r RECORD;
+      BEGIN
+        FOR r IN
+          SELECT c.conname
+          FROM pg_constraint c
+          JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+          WHERE c.conrelid = 'tc_devices'::regclass
+            AND c.contype = 'u'
+            AND array_length(c.conkey, 1) = 1
+            AND a.attname = 'uniqueid'
+        LOOP
+          EXECUTE format('ALTER TABLE tc_devices DROP CONSTRAINT %I', r.conname);
+        END LOOP;
+      END
+      $$;
+    </sql>
+
+    <sql>
+      DROP INDEX IF EXISTS idx_devices_uniqueid;
+      CREATE UNIQUE INDEX idx_devices_uniqueid ON tc_devices (uniqueid) WHERE deletedat IS NULL;
+    </sql>
+
+    <rollback>
+      <sql>
+        DROP INDEX IF EXISTS idx_devices_uniqueid;
+        CREATE INDEX idx_devices_uniqueid ON tc_devices (uniqueid);
+        ALTER TABLE tc_devices ADD CONSTRAINT tc_devices_uniqueid_key UNIQUE (uniqueid);
+      </sql>
+    </rollback>
+
+  </changeSet>
+
+</databaseChangeLog>

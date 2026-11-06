@@ -38,7 +38,7 @@ public class CorsResponseFilter implements ContainerResponseFilter {
 
     private static final String ORIGIN_ALL = "*";
     private static final String HEADERS_ALL = "origin, content-type, accept, authorization";
-    private static final String METHODS_ALL = "GET, POST, PUT, DELETE, OPTIONS";
+    private static final String METHODS_ALL = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
 
     @Override
     public void filter(ContainerRequestContext request, ContainerResponseContext response) throws IOException {

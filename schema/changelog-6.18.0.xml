@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd"
+  logicalFilePath="changelog-6.18.0">
+
+  <changeSet author="author" id="changelog-6.18.0">
+
+    <addColumn tableName="tc_tenants">
+      <column name="legalname" type="VARCHAR(256)" />
+      <column name="document" type="VARCHAR(20)" />
+      <column name="email" type="VARCHAR(128)" />
+      <column name="phone" type="VARCHAR(32)" />
+      <column name="contactname" type="VARCHAR(128)" />
+      <column name="zipcode" type="VARCHAR(16)" />
+      <column name="street" type="VARCHAR(256)" />
+      <column name="streetnumber" type="VARCHAR(16)" />
+      <column name="complement" type="VARCHAR(128)" />
+      <column name="district" type="VARCHAR(128)" />
+      <column name="city" type="VARCHAR(128)" />
+      <column name="state" type="VARCHAR(64)" />
+      <column name="baselatitude" type="DOUBLE" />
+      <column name="baselongitude" type="DOUBLE" />
+      <column name="baseradius" type="INT" />
+    </addColumn>
+
+  </changeSet>
+
+</databaseChangeLog>

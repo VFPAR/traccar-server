@@ -112,7 +112,7 @@ public class PermissionsService {
                 if (!denied && addition && getUser(userId).getDeviceLimit() > 0) {
                     int deviceCount = storage.getObjects(Device.class, new Request(
                             new Columns.Include("id"),
-                            new Condition.Permission(User.class, userId, Device.class))).size();
+                            new Condition.Permission(User.class, userId, Device.class).linkedOnly())).size();
                     denied = deviceCount >= getUser(userId).getDeviceLimit();
                 }
             } else if (clazz.equals(Command.class)) {
@@ -174,10 +174,25 @@ public class PermissionsService {
                     || storage.getPermissions(User.class, userId, ManagedUser.class, managedUserId).isEmpty()) {
                 throw new SecurityException("User access denied");
             }
+            User managedUser = storage.getObject(
+                    User.class, new Request(new Columns.All(), new Condition.Equals("id", managedUserId)));
+            if (managedUser == null || managedUser.getTenantId() != getUser(userId).getTenantId()) {
+                throw new SecurityException("User access denied");
+            }
+        }
+    }
+
+    public void checkUserTenant(User user) {
+        if (user.getAdministrator() && user.getTenantId() != 0) {
+            throw new IllegalArgumentException("Administrator cannot belong to a tenant");
         }
     }
 
     public void checkUserUpdate(long userId, User before, User after) throws StorageException, SecurityException {
+        checkUserTenant(after);
+        if (before.getTenantId() != after.getTenantId()) {
+            checkAdmin(userId);
+        }
         if (before.getAdministrator() != after.getAdministrator()
                 || before.getDeviceLimit() != after.getDeviceLimit()
                 || before.getUserLimit() != after.getUserLimit()) {

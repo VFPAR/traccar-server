@@ -98,10 +98,13 @@ public class UserResource extends BaseObjectResource<User> {
     @Override
     @PermitAll
     @POST
-    public Response add(User entity) throws StorageException {
+    public Response add(User entity) throws Exception {
         User currentUser = getUserId() > 0 ? permissionsService.getUser(getUserId()) : null;
         if (currentUser == null || !currentUser.getAdministrator()) {
-            permissionsService.checkUserUpdate(getUserId(), new User(), entity);
+            entity.setTenantId(currentUser != null && currentUser.getUserLimit() != 0 ? currentUser.getTenantId() : 0);
+            User before = new User();
+            before.setTenantId(entity.getTenantId());
+            permissionsService.checkUserUpdate(getUserId(), before, entity);
             if (currentUser != null && currentUser.getUserLimit() != 0) {
                 int userLimit = currentUser.getUserLimit();
                 if (userLimit > 0) {
@@ -125,6 +128,8 @@ public class UserResource extends BaseObjectResource<User> {
                 }
                 UserUtil.setUserDefaults(entity, config);
             }
+        } else {
+            permissionsService.checkUserTenant(entity);
         }
 
         entity.setId(storage.addObject(entity, new Request(new Columns.Exclude("id"))));
@@ -138,6 +143,7 @@ public class UserResource extends BaseObjectResource<User> {
             storage.addPermission(new Permission(User.class, getUserId(), ManagedUser.class, entity.getId()));
             actionLogger.link(request, getUserId(), User.class, getUserId(), ManagedUser.class, entity.getId());
         }
+        tenantAccessService.objectAdded(User.class, entity.getId(), entity.getTenantId());
         return Response.ok(entity).build();
     }
 

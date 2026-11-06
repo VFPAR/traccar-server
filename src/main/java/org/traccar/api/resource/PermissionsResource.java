@@ -22,10 +22,18 @@ import jakarta.ws.rs.core.UriInfo;
 import org.traccar.api.BaseResource;
 import org.traccar.helper.LogAction;
 import org.traccar.model.BaseModel;
+import org.traccar.model.Device;
+import org.traccar.model.LinkedDevice;
+import org.traccar.model.ManagedUser;
 import org.traccar.model.Permission;
+import org.traccar.model.TenantModel;
+import org.traccar.model.User;
 import org.traccar.model.UserRestrictions;
 import org.traccar.session.cache.CacheManager;
 import org.traccar.storage.StorageException;
+import org.traccar.storage.query.Columns;
+import org.traccar.storage.query.Condition;
+import org.traccar.storage.query.Request;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -63,6 +71,33 @@ public class PermissionsResource  extends BaseResource {
         }
     }
 
+    private long getTenantId(Class<? extends BaseModel> clazz, long id) throws StorageException {
+        Class<? extends BaseModel> queryClass = clazz;
+        if (ManagedUser.class.equals(clazz)) {
+            queryClass = User.class;
+        } else if (LinkedDevice.class.equals(clazz)) {
+            queryClass = Device.class;
+        }
+        if (!TenantModel.class.isAssignableFrom(queryClass)) {
+            return 0;
+        }
+        BaseModel object = storage.getObject(queryClass, new Request(
+                new Columns.Include("id", "tenantId"), new Condition.Equals("id", id)));
+        if (!(object instanceof TenantModel tenantModel)) {
+            throw new IllegalArgumentException(queryClass.getSimpleName() + " not found");
+        }
+        return tenantModel.getTenantId();
+    }
+
+    private void checkTenants(Permission permission) throws StorageException {
+        if (TenantModel.class.isAssignableFrom(permission.getOwnerClass())
+                && TenantModel.class.isAssignableFrom(permission.getPropertyClass())
+                && getTenantId(permission.getOwnerClass(), permission.getOwnerId())
+                != getTenantId(permission.getPropertyClass(), permission.getPropertyId())) {
+            throw new IllegalArgumentException("Cannot link objects from different tenants");
+        }
+    }
+
     private void checkPermissionTypes(List<LinkedHashMap<String, Long>> entities) {
         Set<String> keys = null;
         for (LinkedHashMap<String, Long> entity: entities) {
@@ -94,6 +129,7 @@ public class PermissionsResource  extends BaseResource {
         for (LinkedHashMap<String, Long> entity: entities) {
             Permission permission = new Permission(entity);
             checkPermission(permission);
+            checkTenants(permission);
             storage.addPermission(permission);
             cacheManager.invalidatePermission(
                     true,

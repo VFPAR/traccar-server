@@ -90,10 +90,6 @@ public class WebServer implements LifecycleObject {
         initApi(servletHandler);
         initSessionConfig(servletHandler);
 
-        if (config.getBoolean(Keys.WEB_CONSOLE)) {
-            servletHandler.addServlet(new ServletHolder(new ConsoleServlet(config)), "/console/*");
-        }
-
         initWebApp(servletHandler);
 
         Handler.Sequence handlers = new Handler.Sequence();

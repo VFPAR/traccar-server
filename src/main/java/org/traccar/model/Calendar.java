@@ -42,7 +42,27 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @StorageName("tc_calendars")
-public class Calendar extends ExtendedModel {
+public class Calendar extends ExtendedModel implements TenantModel {
+
+    private long tenantId;
+
+    private boolean tenantIdSpecified;
+
+    @Override
+    public long getTenantId() {
+        return tenantId;
+    }
+
+    @Override
+    public void setTenantId(long tenantId) {
+        this.tenantId = tenantId;
+        this.tenantIdSpecified = true;
+    }
+
+    @Override
+    public boolean tenantIdSpecified() {
+        return tenantIdSpecified;
+    }
 
     private String name;
 

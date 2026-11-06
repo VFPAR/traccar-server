@@ -167,6 +167,18 @@ public final class QueryBuilder implements AutoCloseable {
                     setLong(index, (Long) value, column.endsWith("Id"));
                 } else if (returnType.equals(double.class)) {
                     setDouble(index, (Double) value);
+                } else if (returnType.equals(Integer.class)) {
+                    if (value == null) {
+                        statement.setNull(index + 1, Types.INTEGER);
+                    } else {
+                        setInteger(index, (Integer) value);
+                    }
+                } else if (returnType.equals(Double.class)) {
+                    if (value == null) {
+                        statement.setNull(index + 1, Types.DOUBLE);
+                    } else {
+                        setDouble(index, (Double) value);
+                    }
                 } else if (returnType.equals(String.class)) {
                     setString(index, (String) value);
                 } else if (returnType.equals(Date.class)) {

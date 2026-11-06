@@ -927,6 +927,38 @@ public final class Keys {
             32 * 1024 * 1024);
 
     /**
+     * AWS S3 bucket for the device photos uploaded through the API (tracker, plate and odometer). When set, those
+     * photos are stored in S3 instead of the media folder. Credentials come from the default AWS provider chain
+     * (environment variables, instance or task role, etc.).
+     */
+    public static final ConfigKey<String> MEDIA_S3_BUCKET = new StringConfigKey(
+            "media.s3.bucket",
+            List.of(KeyType.CONFIG));
+
+    /**
+     * AWS region of the media bucket. If not set, the region is resolved by the default AWS provider chain.
+     */
+    public static final ConfigKey<String> MEDIA_S3_REGION = new StringConfigKey(
+            "media.s3.region",
+            List.of(KeyType.CONFIG));
+
+    /**
+     * Optional key prefix for the device photos inside the media bucket. Objects are stored as
+     * prefix/folder/uniqueId.ext, where folder is rastreador, rastreadoreplaca or odometro. Empty by default, which
+     * puts the folders at the root of the bucket.
+     */
+    public static final ConfigKey<String> MEDIA_S3_PREFIX = new StringConfigKey(
+            "media.s3.prefix",
+            List.of(KeyType.CONFIG));
+
+    /**
+     * Optional custom endpoint for S3 compatible storage (for example MinIO). Enables path-style access.
+     */
+    public static final ConfigKey<String> MEDIA_S3_ENDPOINT = new StringConfigKey(
+            "media.s3.endpoint",
+            List.of(KeyType.CONFIG));
+
+    /**
      * Optional parameter to specify a network interface for the web interface to bind to. By default, the server will
      * bind to all available interfaces.
      */
@@ -972,13 +1004,6 @@ public final class Keys {
      */
     public static final ConfigKey<Integer> WEB_SESSION_TIMEOUT = new IntegerConfigKey(
             "web.sessionTimeout",
-            List.of(KeyType.CONFIG));
-
-    /**
-     * Enable database access console via '/console' URL. Use only for debugging. Never use in production.
-     */
-    public static final ConfigKey<Boolean> WEB_CONSOLE = new BooleanConfigKey(
-            "web.console",
             List.of(KeyType.CONFIG));
 
     /**

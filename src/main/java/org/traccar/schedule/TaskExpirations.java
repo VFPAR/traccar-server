@@ -77,7 +77,8 @@ public class TaskExpirations extends SingleScheduleTask {
 
     private void sendDeviceExpiration(Server server, Device device, String template) throws Exception {
         var users = storage.getObjects(User.class, new Request(
-                new Columns.All(), new Condition.Permission(User.class, Device.class, device.getId())));
+                new Columns.All(),
+                new Condition.Permission(User.class, Device.class, device.getId()).linkedOnly()));
         for (User user : users) {
             var velocityContext = textTemplateFormatter.prepareContext(server, user);
             velocityContext.put("expiration", device.getExpirationTime());

@@ -15,9 +15,14 @@
  */
 package org.traccar.api.resource;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.core.Context;
 import org.traccar.api.BaseObjectResource;
+import org.traccar.database.CarBatteryManager;
+import org.traccar.database.DeviceImageStorage;
 import org.traccar.database.MediaManager;
 import org.traccar.helper.LogAction;
 import org.traccar.model.Device;
@@ -37,6 +42,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -72,7 +78,74 @@ public class DeviceResource extends BaseObjectResource<Device> {
     private MediaManager mediaManager;
 
     @Inject
+    private DeviceImageStorage deviceImageStorage;
+
+    @Inject
+    private ObjectMapper objectMapper;
+
+    @Inject
+    private CarBatteryManager carBatteryManager;
+
+    @Inject
     private LogAction actionLogger;
+
+    private static void requireAttribute(Device entity, String key, String label) {
+        Object value = entity.getAttributes().get(key);
+        if (value == null || value.toString().isBlank()) {
+            throw new IllegalArgumentException(label + " is required");
+        }
+    }
+
+    private static void validateRequiredAttributes(Device entity) {
+        requireAttribute(entity, "devicePassword", "Device password");
+        requireAttribute(entity, "imeiSecundario", "IMEI");
+    }
+
+    @Override
+    public Response add(Device entity) throws Exception {
+        validateRequiredAttributes(entity);
+        return super.add(entity);
+    }
+
+    @Override
+    public Response update(Device entity) throws Exception {
+        validateRequiredAttributes(entity);
+        return super.update(entity);
+    }
+
+    @Path("{id}")
+    @PATCH
+    public Response patch(@PathParam("id") long id, JsonNode changes) throws Exception {
+        permissionsService.checkPermission(Device.class, getUserId(), id);
+        if (changes == null || !changes.isObject()) {
+            throw new IllegalArgumentException("Request body must be a JSON object");
+        }
+
+        Device device = storage.getObject(Device.class, new Request(
+                new Columns.All(), new Condition.Equals("id", id)));
+        if (device == null) {
+            throw new IllegalArgumentException("Device not found");
+        }
+
+        ObjectNode fields = ((ObjectNode) changes).deepCopy();
+        fields.remove("id");
+        JsonNode attributes = fields.remove("attributes");
+        objectMapper.readerForUpdating(device).readValue(fields);
+
+        if (attributes != null && attributes.isObject()) {
+            attributes.fields().forEachRemaining(entry -> {
+                if (entry.getValue().isNull()) {
+                    device.getAttributes().remove(entry.getKey());
+                } else {
+                    device.getAttributes().put(
+                            entry.getKey(), objectMapper.convertValue(entry.getValue(), Object.class));
+                }
+            });
+        }
+
+        device.setId(id);
+        return update(device);
+    }
 
     @Context
     private HttpServletRequest request;
@@ -110,7 +183,7 @@ public class DeviceResource extends BaseObjectResource<Device> {
                                 new Condition.Equals("id", deviceId),
                                 new Condition.Permission(User.class, getUserId(), Device.class)))));
             }
-            return result.stream();
+            return result.stream().peek(carBatteryManager::fill);
 
         } else {
 
@@ -141,7 +214,8 @@ public class DeviceResource extends BaseObjectResource<Device> {
             }
 
             return storage.getObjectsStream(baseClass, new Request(
-                    columns, Condition.merge(conditions), new Order("name", false, limit, offset)));
+                    columns, Condition.merge(conditions), new Order("name", false, limit, offset)))
+                    .peek(carBatteryManager::fill);
 
         }
     }
@@ -187,6 +261,16 @@ public class DeviceResource extends BaseObjectResource<Device> {
         return Response.noContent().build();
     }
 
+    private String imageName(String slot) {
+        if (slot == null || slot.isEmpty()) {
+            return "device";
+        }
+        return switch (slot) {
+            case "tracker", "plate", "odometer" -> slot;
+            default -> throw new IllegalArgumentException("Unsupported image slot");
+        };
+    }
+
     private String imageExtension(String type) {
         return switch (type) {
             case "image/jpeg" -> "jpg";
@@ -201,7 +285,7 @@ public class DeviceResource extends BaseObjectResource<Device> {
     @POST
     @Consumes("image/*")
     public Response uploadImage(
-            @PathParam("id") long deviceId, File file,
+            @PathParam("id") long deviceId, @QueryParam("slot") String slot, File file,
             @HeaderParam(HttpHeaders.CONTENT_TYPE) String type) throws StorageException, IOException {
 
         permissionsService.checkEdit(getUserId(), Device.class, false, false);
@@ -212,8 +296,15 @@ public class DeviceResource extends BaseObjectResource<Device> {
                         new Condition.Equals("id", deviceId),
                         new Condition.Permission(User.class, getUserId(), Device.class))));
         if (device != null) {
-            String name = "device";
+            String name = imageName(slot);
             String extension = imageExtension(type);
+            if (deviceImageStorage.isEnabled()) {
+                if (file.length() > IMAGE_SIZE_LIMIT) {
+                    throw new IllegalArgumentException("Image size limit exceeded");
+                }
+                deviceImageStorage.put(device.getUniqueId(), name + "." + extension, type, file);
+                return Response.ok(name + "." + extension).build();
+            }
             try (var input = new FileInputStream(file);
                     var output = mediaManager.createFileStream(device.getUniqueId(), name, extension)) {
 

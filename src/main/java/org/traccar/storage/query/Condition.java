@@ -16,6 +16,8 @@
 package org.traccar.storage.query;
 
 import org.traccar.model.GroupedModel;
+import org.traccar.model.TenantModel;
+import org.traccar.model.User;
 
 import java.util.List;
 
@@ -129,26 +131,35 @@ public interface Condition {
         private final Class<?> propertyClass;
         private final long propertyId;
         private final boolean excludeGroups;
+        private final boolean linkedOnly;
 
         private Permission(
-                Class<?> ownerClass, long ownerId, Class<?> propertyClass, long propertyId, boolean excludeGroups) {
+                Class<?> ownerClass, long ownerId, Class<?> propertyClass, long propertyId,
+                boolean excludeGroups, boolean linkedOnly) {
             this.ownerClass = ownerClass;
             this.ownerId = ownerId;
             this.propertyClass = propertyClass;
             this.propertyId = propertyId;
             this.excludeGroups = excludeGroups;
+            this.linkedOnly = linkedOnly;
         }
 
         public Permission(Class<?> ownerClass, long ownerId, Class<?> propertyClass) {
-            this(ownerClass, ownerId, propertyClass, 0, false);
+            this(ownerClass, ownerId, propertyClass, 0, false, false);
         }
 
         public Permission(Class<?> ownerClass, Class<?> propertyClass, long propertyId) {
-            this(ownerClass, 0, propertyClass, propertyId, false);
+            this(ownerClass, 0, propertyClass, propertyId, false, false);
         }
 
         public Permission excludeGroups() {
-            return new Permission(this.ownerClass, this.ownerId, this.propertyClass, this.propertyId, true);
+            return new Permission(
+                    this.ownerClass, this.ownerId, this.propertyClass, this.propertyId, true, this.linkedOnly);
+        }
+
+        public Permission linkedOnly() {
+            return new Permission(
+                    this.ownerClass, this.ownerId, this.propertyClass, this.propertyId, this.excludeGroups, true);
         }
 
         public Class<?> getOwnerClass() {
@@ -165,6 +176,22 @@ public interface Condition {
 
         public long getPropertyId() {
             return propertyId;
+        }
+
+        public boolean getExcludeGroups() {
+            return excludeGroups;
+        }
+
+        public boolean getOwnerFixed() {
+            return ownerId > 0;
+        }
+
+        public boolean getTenantScoped() {
+            return User.class.isAssignableFrom(ownerClass) && TenantModel.class.isAssignableFrom(propertyClass);
+        }
+
+        public boolean getTenantDerived() {
+            return getTenantScoped() && !excludeGroups && !linkedOnly && !User.class.isAssignableFrom(propertyClass);
         }
 
         public boolean getIncludeGroups() {

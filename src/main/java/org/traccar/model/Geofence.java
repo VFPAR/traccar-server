@@ -21,12 +21,35 @@ import org.traccar.geofence.GeofenceGeometry;
 import org.traccar.geofence.GeofencePolygon;
 import org.traccar.geofence.GeofencePolyline;
 import org.traccar.storage.QueryIgnore;
+import org.traccar.storage.SoftDelete;
 import org.traccar.storage.StorageName;
 
 import java.text.ParseException;
+import java.util.Date;
 
 @StorageName("tc_geofences")
-public class Geofence extends ExtendedModel implements Schedulable {
+@SoftDelete
+public class Geofence extends ExtendedModel implements Schedulable, TenantModel, SoftDeletable {
+
+    private long tenantId;
+
+    private boolean tenantIdSpecified;
+
+    @Override
+    public long getTenantId() {
+        return tenantId;
+    }
+
+    @Override
+    public void setTenantId(long tenantId) {
+        this.tenantId = tenantId;
+        this.tenantIdSpecified = true;
+    }
+
+    @Override
+    public boolean tenantIdSpecified() {
+        return tenantIdSpecified;
+    }
 
     private long calendarId;
 
@@ -127,6 +150,45 @@ public class Geofence extends ExtendedModel implements Schedulable {
 
         return getGeometry().intersectsSegment(
                 from.getLatitude(), from.getLongitude(), to.getLatitude(), to.getLongitude());
+    }
+
+    private Date createdAt;
+
+    @QueryIgnore
+    @Override
+    public Date getCreatedAt() {
+        return createdAt;
+    }
+
+    @Override
+    public void setCreatedAt(Date createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    private Date updatedAt;
+
+    @QueryIgnore
+    @Override
+    public Date getUpdatedAt() {
+        return updatedAt;
+    }
+
+    @Override
+    public void setUpdatedAt(Date updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    private Date deletedAt;
+
+    @QueryIgnore
+    @Override
+    public Date getDeletedAt() {
+        return deletedAt;
+    }
+
+    @Override
+    public void setDeletedAt(Date deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
 }

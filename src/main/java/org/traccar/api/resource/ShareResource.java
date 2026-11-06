@@ -86,6 +86,7 @@ public class ShareResource extends BaseResource {
             share = new User();
             share.setName(clazz == Device.class ? ((Device) object).getName() : ((Group) object).getName());
             share.setEmail(shareEmail);
+            share.setTenantId(0);
             share.setExpirationTime(expiration);
             share.setTemporary(true);
             share.setReadonly(true);

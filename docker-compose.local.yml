@@ -1,0 +1,46 @@
+# Ambiente local: traccar-server + traccar-web separados, igual ao EasyPanel.
+# Banco: PostgreSQL rodando no host (localhost:5432, banco 'traccar'). O H2 foi descontinuado.
+# Dados antigos do H2: scripts/migrate-h2-to-postgres/migrate.sh
+# Valores sobrescritos por .env (veja .env.example); sem .env usa os padroes abaixo.
+# Uso:  docker compose -f docker-compose.local.yml up -d --build
+name: traccar-local
+
+services:
+  traccar-server:
+    build: .
+    container_name: traccar-server-local
+    ports:
+      - "8082:8082"   # API/front embutido (acesso direto, opcional)
+      - "6013:6013"   # micodus (MV730G)
+      - "6014:6014"   # jt808 (MV710G/MV710N)
+    environment:
+      CONFIG_USE_ENVIRONMENT_VARIABLES: "true"
+      DATABASE_DRIVER: ${DATABASE_DRIVER:-org.postgresql.Driver}
+      DATABASE_URL: ${DATABASE_URL:-jdbc:postgresql://host.docker.internal:5432/traccar}
+      DATABASE_USER: ${DATABASE_USER:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      MEDIA_PATH: /opt/traccar/data/media   # fotos dos dispositivos dentro do volume persistente
+      # S3 opcional para as fotos de device (vazio = disco). Credenciais pela chain padrao da AWS.
+      MEDIA_S3_BUCKET: ${MEDIA_S3_BUCKET:-}
+      MEDIA_S3_REGION: ${MEDIA_S3_REGION:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+    volumes:
+      - traccar-data:/opt/traccar/data
+    restart: unless-stopped
+
+  traccar-web:
+    build: ./traccar-web
+    container_name: traccar-web-local
+    environment:
+      TRACCAR_API_URL: http://traccar-server:8082
+      APP_TITLE: Traccar (local)
+    ports:
+      - "8080:80"
+    depends_on:
+      - traccar-server
+    restart: unless-stopped
+
+volumes:
+  traccar-data:
+    external: true   # reaproveita o volume já criado (usuário e devices de teste)
