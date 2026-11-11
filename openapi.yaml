@@ -2297,6 +2297,39 @@ paths:
         '400':
           description: Bad request
           content: {}
+    patch:
+      operationId: patchGeofencesId
+      summary: Partially update a Geofence
+      description: >-
+        Only the fields present in the body are changed. `attributes` are merged key by key
+        (a `null` value removes the key). `id` in the body is ignored.
+      tags:
+        - Geofences
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Geofence'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Geofence'
+        '400':
+          description: Bad request
+          content: {}
+        '401':
+          description: Unauthorized
+          content: {}
     delete:
       operationId: deleteGeofencesId
       summary: Delete a Geofence

@@ -428,6 +428,16 @@ public class Device extends GroupedModel implements Disableable, Schedulable, Te
         this.overspeedGeofenceId = overspeedGeofenceId;
     }
 
+    private boolean available = true;
+
+    public boolean getAvailable() {
+        return available;
+    }
+
+    public void setAvailable(boolean available) {
+        this.available = available;
+    }
+
     private Date createdAt;
 
     @QueryIgnore

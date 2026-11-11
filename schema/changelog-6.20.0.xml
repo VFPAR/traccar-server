@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd"
+  logicalFilePath="changelog-6.20.0">
+
+  <!-- The column may already exist: the telemetry-service creates it too (ADD COLUMN IF NOT EXISTS). -->
+  <changeSet author="author" id="changelog-6.20.0-devices-available" dbms="postgresql">
+
+    <sql>
+      ALTER TABLE tc_devices ADD COLUMN IF NOT EXISTS available BOOLEAN NOT NULL DEFAULT true;
+    </sql>
+
+    <rollback>
+      <sql>
+        ALTER TABLE tc_devices DROP COLUMN IF EXISTS available;
+      </sql>
+    </rollback>
+
+  </changeSet>
+
+</databaseChangeLog>
