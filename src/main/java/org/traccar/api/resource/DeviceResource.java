@@ -210,7 +210,9 @@ public class DeviceResource extends BaseObjectResource<Device> {
 
             if (keyword != null && !keyword.isEmpty()) {
                 conditions.add(new Condition.Contains(
-                        List.of("name", "uniqueId", "phone", "model", "contact"), keyword));
+                        List.of("name", "uniqueId", "phone", "model", "contact",
+                                "plate", "chassis", "manufacturer", "vehicleType", "color",
+                                "manufactureYear", "modelYear"), keyword));
             }
 
             return storage.getObjectsStream(baseClass, new Request(

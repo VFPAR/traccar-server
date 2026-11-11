@@ -411,7 +411,7 @@ public class DatabaseStorage extends Storage {
 
                 result.append('(');
                 result.append(condition.getColumns().stream()
-                        .map(column -> "LOWER(" + column + ") LIKE ?")
+                        .map(column -> "LOWER(CAST(" + column + " AS VARCHAR)) LIKE ?")
                         .collect(Collectors.joining(" OR ")));
                 result.append(')');
 
