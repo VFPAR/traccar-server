@@ -21,4 +21,20 @@
 
   </changeSet>
 
+  <changeSet author="author" id="changelog-6.20.0-geofences-type-blocks">
+
+    <addColumn tableName="tc_geofences">
+      <column name="type" type="VARCHAR(32)" />
+      <column name="blocks" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="false" />
+      </column>
+    </addColumn>
+
+    <rollback>
+      <dropColumn tableName="tc_geofences" columnName="blocks" />
+      <dropColumn tableName="tc_geofences" columnName="type" />
+    </rollback>
+
+  </changeSet>
+
 </databaseChangeLog>

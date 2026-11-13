@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.traccar.config.Config;
 import org.traccar.model.Device;
+import org.traccar.model.Geofence;
+import org.traccar.model.GeofenceType;
 import org.traccar.model.Group;
 import org.traccar.model.ManagedUser;
 import org.traccar.model.Tenant;
@@ -34,8 +36,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
@@ -86,7 +90,7 @@ public class PostgresStorageIntegrationTest {
     public void clean() throws Exception {
         assumeTrue(dataSource != null);
         execute("DELETE FROM tc_user_user", "DELETE FROM tc_user_device", "DELETE FROM tc_user_group",
-                "DELETE FROM tc_devices", "DELETE FROM tc_groups",
+                "DELETE FROM tc_devices", "DELETE FROM tc_groups", "DELETE FROM tc_geofences",
                 "DELETE FROM tc_users", "DELETE FROM tc_tenants");
     }
 
@@ -228,6 +232,60 @@ public class PostgresStorageIntegrationTest {
         assertNull(emptyLoaded.getManufactureYear());
         assertNull(emptyLoaded.getModelYear());
         assertNull(emptyLoaded.getInstallationDate());
+    }
+
+    @Test
+    public void geofenceSchemaHasTypeAndBlocksColumns() throws Exception {
+        Map<String, String> geofences = columns("tc_geofences");
+        assertEquals("character varying", geofences.get("type"));
+        assertEquals("boolean", geofences.get("blocks"));
+    }
+
+    private Geofence getGeofence(long id) throws Exception {
+        return storage.getObject(Geofence.class, new Request(new Columns.All(), new Condition.Equals("id", id)));
+    }
+
+    @Test
+    public void geofenceRoundTripWithTypeAndBlocks() throws Exception {
+        Geofence geofence = new Geofence();
+        geofence.setName("G1");
+        geofence.setArea("CIRCLE (-23.5 -46.6, 100)");
+        geofence.setType(GeofenceType.CHARGING_STATION);
+        geofence.setBlocks(true);
+        long id = storage.addObject(geofence, new Request(new Columns.Exclude("id")));
+
+        Geofence loaded = getGeofence(id);
+        assertEquals(GeofenceType.CHARGING_STATION, loaded.getType());
+        assertTrue(loaded.getBlocks());
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement();
+                ResultSet rs = statement.executeQuery("SELECT type FROM tc_geofences WHERE id = " + id)) {
+            rs.next();
+            assertEquals("CHARGING_STATION", rs.getString(1));
+        }
+
+        loaded.setType(GeofenceType.HOME);
+        loaded.setBlocks(false);
+        storage.updateObject(loaded, new Request(new Columns.Exclude("id"), new Condition.Equals("id", id)));
+        loaded = getGeofence(id);
+        assertEquals(GeofenceType.HOME, loaded.getType());
+        assertFalse(loaded.getBlocks());
+
+        loaded.setType(null);
+        storage.updateObject(loaded, new Request(new Columns.Exclude("id"), new Condition.Equals("id", id)));
+        assertNull(getGeofence(id).getType());
+    }
+
+    @Test
+    public void geofenceDefaultsToNoTypeAndNotBlocking() throws Exception {
+        Geofence geofence = new Geofence();
+        geofence.setName("G2");
+        geofence.setArea("CIRCLE (-23.5 -46.6, 100)");
+        long id = storage.addObject(geofence, new Request(new Columns.Exclude("id")));
+
+        Geofence loaded = getGeofence(id);
+        assertNull(loaded.getType());
+        assertFalse(loaded.getBlocks());
     }
 
     private long tenant(String name) throws Exception {

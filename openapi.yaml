@@ -4353,6 +4353,18 @@ components:
         description:
           type: string
           description: Details about the geofence for display in the UI
+        type:
+          type: string
+          nullable: true
+          enum:
+            - MAINTENANCE
+            - HOME
+            - CHARGING_STATION
+          description: Geofence category (maintenance, home or charging station)
+        blocks:
+          type: boolean
+          default: false
+          description: Whether the geofence blocks the device
         area:
           type: string
           description: Geofence area definition encoded as a WKT string

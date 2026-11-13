@@ -185,6 +185,8 @@ public final class QueryBuilder implements AutoCloseable {
                     setDate(index, (Date) value);
                 } else if (returnType.equals(byte[].class)) {
                     setBlob(index, (byte[]) value);
+                } else if (returnType.isEnum()) {
+                    setString(index, value != null ? ((Enum<?>) value).name() : null);
                 } else {
                     setString(index, objectMapper.writeValueAsString(value));
                 }
@@ -232,6 +234,13 @@ public final class QueryBuilder implements AutoCloseable {
             processors.add((object, resultSet) -> {
                 handle.invokeExact(object, (Object) resultSet.getBytes(columnIndex));
             });
+        } else if (parameterType.isEnum()) {
+            processors.add((object, resultSet) -> {
+                String value = resultSet.getString(columnIndex);
+                if (value != null && !value.isEmpty()) {
+                    handle.invokeExact(object, (Object) enumValue(parameterType, value));
+                }
+            });
         } else {
             processors.add((object, resultSet) -> {
                 String value = resultSet.getString(columnIndex);
@@ -240,6 +249,11 @@ public final class QueryBuilder implements AutoCloseable {
                 }
             });
         }
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Object enumValue(Class<?> type, String value) {
+        return Enum.valueOf((Class<? extends Enum>) type, value);
     }
 
     private void logQuery() {

@@ -83,6 +83,26 @@ public class Geofence extends ExtendedModel implements Schedulable, TenantModel,
         this.description = description;
     }
 
+    private GeofenceType type;
+
+    public GeofenceType getType() {
+        return type;
+    }
+
+    public void setType(GeofenceType type) {
+        this.type = type;
+    }
+
+    private boolean blocks;
+
+    public boolean getBlocks() {
+        return blocks;
+    }
+
+    public void setBlocks(boolean blocks) {
+        this.blocks = blocks;
+    }
+
     private String area;
 
     public String getArea() {
