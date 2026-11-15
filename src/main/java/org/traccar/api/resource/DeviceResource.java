@@ -237,6 +237,22 @@ public class DeviceResource extends BaseObjectResource<Device> {
         }
     }
 
+    @Path("models")
+    @GET
+    public List<String> getModels(@QueryParam("all") boolean all) throws StorageException {
+        var conditions = new LinkedList<Condition>();
+        if (!all || permissionsService.notAdmin(getUserId())) {
+            conditions.add(new Condition.Permission(User.class, getUserId(), baseClass));
+        }
+        return storage.getObjects(baseClass, new Request(
+                new Columns.Include("model"), Condition.merge(conditions))).stream()
+                .map(Device::getModel)
+                .filter(model -> model != null && !model.isEmpty())
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
     @Path("{id}/accumulators")
     @PUT
     public Response updateAccumulators(DeviceAccumulators entity) throws Exception {
