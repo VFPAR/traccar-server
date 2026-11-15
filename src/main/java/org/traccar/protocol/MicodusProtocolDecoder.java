@@ -81,11 +81,64 @@ public class MicodusProtocolDecoder extends BaseProtocolDecoder {
             .text("#")
             .compile();
 
+    // V19 (ICCID) e V15 (IMEI): identificação enviada na conexão, sem país/operadora/bateria.
+    private static final Pattern PATTERN_IDENTITY = new PatternBuilder()
+            .text("*")
+            .expression("..,")                   // manufacturer
+            .number("(d+),")                     // id
+            .expression("(V19|V15),")            // type
+            .number("(?:(dd)(dd)(dd))?,")        // time (hhmmss)
+            .expression("[ABV]?,")               // validity
+            .expression("[^,]*,[NS],")           // latitude
+            .expression("[^,]*,[EW],")           // longitude
+            .expression("[^,]*,")                // speed
+            .expression("[^,]*,")                // course
+            .number("(?:(dd)(dd)(dd))?,")        // date (ddmmyy)
+            .expression("[^,]*,")                // reserved
+            .expression("[^,]*,")                // reserved
+            .number("(d+),")                     // iccid or imei
+            .expression("[0-9A-Fa-f]+")          // status
+            .text("#")
+            .compile();
+
+    private Position decodeIdentity(String sentence, Channel channel, SocketAddress remoteAddress) {
+
+        Parser parser = new Parser(PATTERN_IDENTITY, sentence);
+        if (!parser.matches()) {
+            return null;
+        }
+
+        DeviceSession deviceSession = getDeviceSession(channel, remoteAddress, parser.next());
+        if (deviceSession == null) {
+            return null;
+        }
+
+        Position position = new Position(getProtocolName());
+        position.setDeviceId(deviceSession.getDeviceId());
+
+        String type = parser.next();
+
+        DateBuilder dateBuilder = new DateBuilder();
+        if (parser.hasNext(3)) {
+            dateBuilder.setTime(parser.nextInt(0), parser.nextInt(0), parser.nextInt(0));
+        }
+        if (parser.hasNext(3)) {
+            dateBuilder.setDateReverse(parser.nextInt(0), parser.nextInt(0), parser.nextInt(0));
+        }
+
+        getLastLocation(position, dateBuilder.getDate());
+
+        position.set("V19".equals(type) ? "iccid" : "imei", parser.next());
+        position.set(KEY_PACKET_TYPE, PACKET_TYPE_TEXT);
+
+        return position;
+    }
+
     private Position decodeText(String sentence, Channel channel, SocketAddress remoteAddress) {
 
         Parser parser = new Parser(PATTERN, sentence);
         if (!parser.matches()) {
-            return null;
+            return decodeIdentity(sentence, channel, remoteAddress);
         }
 
         String id = parser.next();
