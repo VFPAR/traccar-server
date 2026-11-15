@@ -165,7 +165,7 @@ public class DeviceResource extends BaseObjectResource<Device> {
             @QueryParam("keyword") String keyword,
             @QueryParam("available") Boolean available,
             @QueryParam("groupId") Long groupId,
-            @QueryParam("model") String model) throws StorageException {
+            @QueryParam("vehicleModel") String vehicleModel) throws StorageException {
 
         Columns columns = excludeAttributes ? new Columns.Exclude("attributes") : new Columns.All();
 
@@ -213,7 +213,7 @@ public class DeviceResource extends BaseObjectResource<Device> {
 
             if (keyword != null && !keyword.isEmpty()) {
                 conditions.add(new Condition.Contains(
-                        List.of("name", "uniqueId", "phone", "model", "contact",
+                        List.of("name", "uniqueId", "phone", "model", "vehicleModel", "contact",
                                 "plate", "chassis", "manufacturer", "vehicleType", "color",
                                 "manufactureYear", "modelYear"), keyword));
             }
@@ -226,8 +226,8 @@ public class DeviceResource extends BaseObjectResource<Device> {
                 conditions.add(new Condition.Equals("groupId", groupId));
             }
 
-            if (model != null && !model.isEmpty()) {
-                conditions.add(new Condition.Equals("model", model));
+            if (vehicleModel != null && !vehicleModel.isEmpty()) {
+                conditions.add(new Condition.Equals("vehicleModel", vehicleModel));
             }
 
             return storage.getObjectsStream(baseClass, new Request(
@@ -245,9 +245,9 @@ public class DeviceResource extends BaseObjectResource<Device> {
             conditions.add(new Condition.Permission(User.class, getUserId(), baseClass));
         }
         return storage.getObjects(baseClass, new Request(
-                new Columns.Include("model"), Condition.merge(conditions))).stream()
-                .map(Device::getModel)
-                .filter(model -> model != null && !model.isEmpty())
+                new Columns.Include("vehicleModel"), Condition.merge(conditions))).stream()
+                .map(Device::getVehicleModel)
+                .filter(value -> value != null && !value.isEmpty())
                 .distinct()
                 .sorted()
                 .toList();
