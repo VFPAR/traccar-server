@@ -36,5 +36,14 @@ public class MicodusProtocolDecoderTest extends ProtocolTest {
         verifyAttribute(decoder, buffer(
                 "*HQ,7340019820,V15,034824,V,1150.3065,S,05530.6183,W,000.00,000,151126,,,867284068581430,BFFFFBFF#"),
                 "imei", "867284068581430");
+
+        // device ack to S20 (cut oil and power / restore), per MiCODUS protocol V2.3 section 2.11
+        verifyAttribute(decoder, buffer(
+                "*HQ,7340019820,V4,S20,095517,1,1#"),
+                "blocked", true);
+
+        verifyAttribute(decoder, buffer(
+                "*HQ,7340019820,V4,S20,095517,1,0#"),
+                "blocked", false);
     }
 }

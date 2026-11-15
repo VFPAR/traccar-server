@@ -134,11 +134,48 @@ public class MicodusProtocolDecoder extends BaseProtocolDecoder {
         return position;
     }
 
+    // Resposta do dispositivo ao comando S20 (corte/restauração de óleo e energia): último campo 1=cortado, 0=restaurado.
+    private static final Pattern PATTERN_OIL_RESPONSE = new PatternBuilder()
+            .text("*")
+            .expression("..,")                   // manufacturer
+            .number("(d+),")                     // id
+            .text("V4,S20,")                     // type
+            .number("d*,")                       // time (hhmmss), sem data: ignorado
+            .number("d+,")                       // reserved
+            .number("([01])")                    // 1 = oil/power cut, 0 = restored
+            .text("#")
+            .compile();
+
+    private Position decodeOilResponse(String sentence, Channel channel, SocketAddress remoteAddress) {
+
+        Parser parser = new Parser(PATTERN_OIL_RESPONSE, sentence);
+        if (!parser.matches()) {
+            return null;
+        }
+
+        DeviceSession deviceSession = getDeviceSession(channel, remoteAddress, parser.next());
+        if (deviceSession == null) {
+            return null;
+        }
+
+        Position position = new Position(getProtocolName());
+        position.setDeviceId(deviceSession.getDeviceId());
+
+        // a resposta traz só hhmmss (sem data): usa o horário do servidor
+        getLastLocation(position, null);
+
+        position.set(Position.KEY_BLOCKED, parser.nextInt() == 1);
+        position.set(KEY_PACKET_TYPE, PACKET_TYPE_TEXT);
+
+        return position;
+    }
+
     private Position decodeText(String sentence, Channel channel, SocketAddress remoteAddress) {
 
         Parser parser = new Parser(PATTERN, sentence);
         if (!parser.matches()) {
-            return decodeIdentity(sentence, channel, remoteAddress);
+            Position response = decodeOilResponse(sentence, channel, remoteAddress);
+            return response != null ? response : decodeIdentity(sentence, channel, remoteAddress);
         }
 
         String id = parser.next();
