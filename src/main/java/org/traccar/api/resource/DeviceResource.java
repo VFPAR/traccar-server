@@ -163,7 +163,9 @@ public class DeviceResource extends BaseObjectResource<Device> {
             @QueryParam("excludeAttributes") boolean excludeAttributes,
             @QueryParam("limit") int limit, @QueryParam("offset") int offset,
             @QueryParam("keyword") String keyword,
-            @QueryParam("available") Boolean available) throws StorageException {
+            @QueryParam("available") Boolean available,
+            @QueryParam("groupId") Long groupId,
+            @QueryParam("model") String model) throws StorageException {
 
         Columns columns = excludeAttributes ? new Columns.Exclude("attributes") : new Columns.All();
 
@@ -218,6 +220,14 @@ public class DeviceResource extends BaseObjectResource<Device> {
 
             if (available != null) {
                 conditions.add(new Condition.Equals("available", available));
+            }
+
+            if (groupId != null) {
+                conditions.add(new Condition.Equals("groupId", groupId));
+            }
+
+            if (model != null && !model.isEmpty()) {
+                conditions.add(new Condition.Equals("model", model));
             }
 
             return storage.getObjectsStream(baseClass, new Request(
