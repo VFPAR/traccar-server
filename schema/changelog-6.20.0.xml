@@ -21,18 +21,19 @@
 
   </changeSet>
 
+  <!-- The columns may already exist: the telemetry-service creates them too (ADD COLUMN IF NOT EXISTS). -->
   <changeSet author="author" id="changelog-6.20.0-geofences-type-blocks">
 
-    <addColumn tableName="tc_geofences">
-      <column name="type" type="VARCHAR(32)" />
-      <column name="blocks" type="BOOLEAN" defaultValueBoolean="false">
-        <constraints nullable="false" />
-      </column>
-    </addColumn>
+    <sql>
+      ALTER TABLE tc_geofences ADD COLUMN IF NOT EXISTS type VARCHAR(32);
+      ALTER TABLE tc_geofences ADD COLUMN IF NOT EXISTS blocks BOOLEAN NOT NULL DEFAULT false;
+    </sql>
 
     <rollback>
-      <dropColumn tableName="tc_geofences" columnName="blocks" />
-      <dropColumn tableName="tc_geofences" columnName="type" />
+      <sql>
+        ALTER TABLE tc_geofences DROP COLUMN IF EXISTS blocks;
+        ALTER TABLE tc_geofences DROP COLUMN IF EXISTS type;
+      </sql>
     </rollback>
 
   </changeSet>
